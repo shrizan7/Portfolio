@@ -1,18 +1,27 @@
 # Time Study & Line Balance
 
-Tool #1 of a small "digital IE toolkit". It turns stopwatch readings into standard times, compares them with takt time, and splits the work across stations.
+Tool #1 of a small "digital IE toolkit". You enter each **process**, its **station** and the **times you observed**, set a few **constants** (rating, allowances, accuracy), and it works out standard times the textbook way. It then compares each station with takt time and can suggest a better split of work.
 
-It's **one HTML file that works offline**: no install, no account, no internet, and no IT approval. Download `index.html` and double-click it to open it in Chrome or Edge, on a laptop, tablet or phone.
+It handles both kinds of work:
+- **Long processes**, such as a 12–14 hour padmount build with hundreds of processes. Type or paste the times in minutes or hours.
+- **Short cycles**, such as cable assembly. Use the built-in stopwatch, in seconds.
 
-All numbers in the built-in sample are made up. Company data never goes in this repository.
+It's **one HTML file that works offline**: no install, no account, no internet, and no IT approval. Download `index.html` and double-click it to open it in Chrome or Edge.
 
-## What it does
+All sample numbers are made up. Company data never goes in this repository.
 
-1. **Setup**: list the steps of one cycle, set demand (to get takt time) and allowances, and write down your "before" number.
-2. **Time it**: a big **Next** button for continuous stopwatch timing. It also has Skip (for steps that don't happen every cycle), Flag interruption, and Undo. On phones and tablets that allow it, the screen stays on while you time. On a laptop, Space works as Next.
-3. **Standard times**: average → normal time (× rating) → standard time (× allowances), per unit. It also shows how many more readings you need for ±5% accuracy at 95% confidence, and highlights unusual readings so you can leave them out.
-4. **Balance**: auto-balances the steps into stations using the ranked positional weight method, keeping the "comes after" order. It shows a yamazumi chart against takt, the bottleneck, units per day, and balance efficiency. You can also move steps between stations by hand.
-5. **Files & links**: save or open the study (.json), download spreadsheets (.csv), print a PDF report, and **send times to Layout Extruder**. That last one fills the waits at each flow-path stop with the measured station or step times.
+## Tabs
+
+1. **Setup & constants:** study details and the "before" number (baseline). Also the constants used everywhere:
+   - time unit (seconds, minutes or hours)
+   - default performance rating, with a Westinghouse calculator
+   - PF&D allowances
+   - confidence and accuracy
+   - demand, which gives takt time
+2. **Processes & times:** one row per process with its station, type, crew size, "comes after" and observations. Each Obs column is one unit you watched, labelled with its serial number. You can paste hundreds of rows straight from Excel, filter by station, and search. There's also an optional stopwatch for short processes.
+3. **Standard times:** average → normal → standard → per unit → labor, grouped by station with subtotals. It flags unusual observations (tap one to leave it out) and says how many observations each process still needs.
+4. **Stations & balance:** a yamazumi chart against takt, a station summary, and warnings when a station is over takt. **Suggest** re-splits the processes using ranked positional weight. Nothing changes until you accept it.
+5. **Files & links:** save or open the study (.json), and download standard times, observations or a station summary (.csv). You can edit the observations file in Excel and paste it back. You can also print a PDF report and send times to Layout Extruder flow-path stops.
 
 ## Formulas
 
@@ -21,9 +30,19 @@ All numbers in the built-in sample are made up. Company data never goes in this 
 | Normal time | average × rating ÷ 100 |
 | Standard time | normal × (1 + allowance ÷ 100) |
 | Per unit | standard ÷ "once every N units" |
-| Takt time | available seconds per day ÷ units needed per day |
-| Readings needed (95%, ±5%) | (40 × √(n·Σx² − (Σx)²) ÷ Σx)² |
-| Minimum stations | total per-unit standard ÷ takt, rounded up |
+| Labor per unit | per unit × crew |
+| Takt time | available time per day or week ÷ units needed |
+| Observations needed | (z ÷ accuracy × √(n·Σx² − (Σx)²) ÷ Σx)², z = 1.645 / 1.96 / 2.576 |
+| Westinghouse rating | 100 × (1 + skill + effort + conditions + consistency) |
+| Minimum operators | total labor per unit ÷ takt, rounded up |
 | Balance efficiency | total work ÷ (stations × slowest station) |
 
-The default allowances are personal 5%, fatigue 4% and delay 6%, for 15% in total. Replace them with your plant's rule. Machine-paced steps get no rating and no allowance unless you set them.
+The default allowances are personal 5%, fatigue 4%, delay 6% and other 0%. Replace them with your plant's rule. Machine-paced processes get no rating and no allowance unless you set them.
+
+## Pasting from Excel
+
+Without a header row, columns are read as **Station · Process · Obs 1 · Obs 2 …**
+
+With a header row, these columns are recognised: Station, Process (or Step, Operation, Task), Type, Crew, Every, Comes after. Any other column is an observation, and its header becomes the label, for example a serial number.
+
+Times can be decimals in the chosen unit, or `h:mm:ss`. A `*` after a time means "leave this one out".
