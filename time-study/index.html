@@ -31,7 +31,8 @@
 }
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.45 var(--font); padding: 12px 16px 40px; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.45 var(--font);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px 80px; }
 .wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 h1 { margin: 0; font-size: 21px; line-height: 1.15; }
 h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
@@ -159,8 +160,11 @@ tr.grp td { background: var(--sub); font-weight: 650; padding-top: 8px; }
 .formula { font: 12px/1.7 var(--mono); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
 ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; max-width: 80ch; }
 
-.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 6px; font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgba(0,0,0,.25); z-index: 10; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 6px; font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgba(0,0,0,.25); z-index: 10; }
 .print-head { display: none; }
+.askbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--warn-bg); border-top: 2px solid var(--warn);
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.askin { max-width: 1280px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; font-weight: 600; color: var(--ink); }
 @media print {
   body { background: #fff; color: #000; padding: 0; }
   .noprint, .tabs, .toast { display: none !important; }
@@ -425,6 +429,9 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
     </div>
   </section>
 </div>
+<div class="askbar" id="askBar" role="alertdialog" aria-labelledby="askMsg" hidden>
+  <div class="askin"><span id="askMsg"></span><span class="row"><button class="btn" id="askNo" type="button">Cancel</button><button class="btn primary" id="askYes" type="button">Yes</button></span></div>
+</div>
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script>
@@ -462,7 +469,7 @@ function blank() {
     balanceTarget: null,
   };
 }
-let S = load() || blank();
+let S = load() || sampleLong(); // first visit opens on the made-up sample; “New study” starts empty
 let tab = 'setup';
 const F = { station: '*', q: '' };
 
@@ -613,6 +620,15 @@ function renderHeader() {
   $('#studyLabel').textContent = `${bits.join(' · ')} · ${S.elements.length} processes · ${S.cycles.length} observation columns`;
   $('#printTitle').textContent = bits.join(' · ');
   document.title = s.name ? `${s.name} · Time Study` : 'Time Study Balancer';
+}
+function ask(msg, yesLabel, onYes) {
+  const bar = $('#askBar');
+  $('#askMsg').textContent = msg; $('#askYes').textContent = yesLabel;
+  bar.hidden = false; $('#askNo').focus();
+  bar.onclick = (e) => {
+    if (e.target.closest('#askYes')) { bar.hidden = true; onYes(); }
+    else if (e.target.closest('#askNo')) bar.hidden = true;
+  };
 }
 let toastT = 0;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3600); }
@@ -770,8 +786,9 @@ $('#procTable').addEventListener('click', (e) => {
   if (del) {
     const c = S.cycles.find((x) => x.id === del.dataset.delcy); if (!c) return;
     const n = Object.keys(c.t).length;
-    if (n && !confirm(`Delete the column “${obsLabel(c, S.cycles.indexOf(c))}” and its ${n} times?`)) return;
-    S.cycles = S.cycles.filter((x) => x !== c); persist(); renderProc(); renderHeader(); return;
+    const go = () => { S.cycles = S.cycles.filter((x) => x !== c); persist(); renderProc(); renderHeader(); };
+    if (n) ask(`Delete the column “${obsLabel(c, S.cycles.indexOf(c))}” and its ${n} times?`, 'Delete column', go); else go();
+    return;
   }
   const b = e.target.closest('button[data-act]'); if (!b || T.on) return;
   const i = S.elements.findIndex((x) => x.id === b.closest('tr').dataset.id); if (i < 0) return;
@@ -780,10 +797,14 @@ $('#procTable').addEventListener('click', (e) => {
   if (b.dataset.act === 'down' && i < S.elements.length - 1) [S.elements[i + 1], S.elements[i]] = [S.elements[i], S.elements[i + 1]];
   if (b.dataset.act === 'del') {
     const has = S.cycles.some((c) => c.t[el.id] != null);
-    if (has && !confirm(`Delete process ${i + 1} “${el.name}” and its times?`)) return;
-    S.elements.splice(i, 1);
-    for (const x of S.elements) x.after = x.after.filter((id) => id !== el.id);
-    for (const c of S.cycles) { delete c.t[el.id]; delete c.x[el.id]; }
+    const go = () => {
+      S.elements = S.elements.filter((x) => x !== el);
+      for (const x of S.elements) x.after = x.after.filter((id) => id !== el.id);
+      for (const c of S.cycles) { delete c.t[el.id]; delete c.x[el.id]; }
+      persist(); renderProc(); renderHeader();
+    };
+    if (has) ask(`Delete process ${i + 1} “${el.name}” and its times?`, 'Delete process', go); else go();
+    return;
   }
   persist(); renderProc(); renderHeader();
 });
@@ -800,7 +821,8 @@ const HEAD = [
 ];
 const SKIP_HEAD = /^(average|avg|mean|normal|standard|std|rating|allowance|per unit|labor|kept|spread|cv|readings needed|enough)/i;
 function parseType(s) { s = String(s || '').toLowerCase(); return /mach|auto|oven|cure|test ?rig|robot/.test(s) ? 'machine' : /walk|move|handl|crane|transport|get|fetch|forklift/.test(s) ? 'walk' : 'manual'; }
-$('#pasteGo').addEventListener('click', () => {
+$('#pasteGo').addEventListener('click', () => pasteRun(false));
+function pasteRun(confirmed) {
   if (T.on) { toast('Stop the stopwatch first.'); return; }
   const text = $('#pasteText').value.replace(/^﻿/, '');
   let lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -822,7 +844,7 @@ $('#pasteGo').addEventListener('click', () => {
   else cols = first.map((_, i) => (i === 0 ? 'station' : i === 1 ? 'name' : 'obs'));
   const obsIdx = cols.map((c, i) => (c === 'obs' ? i : -1)).filter((i) => i >= 0);
   const replace = $('#pasteReplace').checked;
-  if (replace && S.elements.length && !confirm(`Replace all ${S.elements.length} current processes and their times?`)) return;
+  if (replace && S.elements.length && !confirmed) { ask(`Replace all ${S.elements.length} current processes and their times?`, 'Replace', () => pasteRun(true)); return; }
   if (replace) { S.elements = []; S.cycles = []; }
   // one observation column per pasted time column; reuse existing columns in order when adding
   const obsCols = obsIdx.map((ci, k) => {
@@ -854,7 +876,7 @@ $('#pasteGo').addEventListener('click', () => {
   persist(); F.station = '*'; F.q = ''; renderProc(); renderHeader();
   toast(`Added ${added.length} process${added.length === 1 ? '' : 'es'} with ${obsIdx.length} observation column${obsIdx.length === 1 ? '' : 's'}.${bad ? ` ${bad} cells weren’t numbers and were skipped.` : ''}`);
   if (added.length) $('#pasteText').value = '';
-});
+}
 
 /* ---------------- Stopwatch ---------------- */
 const T = { on: false, cy: null, seq: [], idx: 0, mark: 0, cycleStart: 0, hist: [], flag: false, int: 0, station: '*' };
@@ -1166,25 +1188,36 @@ $('#target').addEventListener('change', (e) => { const v = parseTime(e.target.va
 $('#propBox').addEventListener('click', (e) => {
   if (e.target.closest('#propClose')) { PROP = null; renderProp(); return; }
   if (!e.target.closest('#propUse') || !PROP) return;
-  if (!confirm('Change the Station column of every process to this split?')) return;
-  for (const el of S.elements) el.station = PROP.assign[el.id];
-  PROP = null; F.station = '*'; persist(); renderBalance(); toast('Stations updated.');
+  ask('Change the Station column of every process to this split?', 'Use this split', () => {
+    if (!PROP) return;
+    for (const el of S.elements) el.station = PROP.assign[el.id];
+    PROP = null; F.station = '*'; persist(); renderBalance(); toast('Stations updated.');
+  });
 });
 
 /* ---------------- Files ---------------- */
 function slug() { return (S.study.name || 'time-study').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'time-study'; }
-function download(name, text, type) {
+const inViewer = () => !!(window.claude && typeof window.claude.use === 'function');
+async function download(name, text, type, okMsg) {
+  if (inViewer()) {
+    let d = null;
+    try { d = await window.claude.use('downloads'); } catch (e) { d = null; }
+    if (!d) { toast('Saving files isn’t available in this view. Use the offline file instead.'); return; }
+    try { await d.save({ filename: name, data: text }); if (okMsg) toast(okMsg); }
+    catch (err) { if (err && err.code !== 'declined') toast(err.code === 'rate_limited' ? 'A save is already waiting for you to confirm.' : 'Couldn’t save the file here. Use the offline file instead.'); }
+    return;
+  }
   const blob = new Blob([text], { type });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  if (okMsg) toast(okMsg);
 }
 function csv(rows) { return '﻿' + rows.map((r) => r.map((v) => { const s = v == null ? '' : String(v); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(',')).join('\r\n'); }
 const rd = (sec, extra = 2) => (sec == null || !isFinite(sec) ? '' : +toU(sec).toFixed(U().dp + extra));
 function saveStudy() {
   if (T.on) { toast('Stop the stopwatch first, then save.'); return; }
-  download(`${slug()}-${today()}.json`, JSON.stringify({ ...S, savedAt: new Date().toISOString() }, null, 2), 'application/json');
-  toast('Study saved to your downloads.');
+  download(`${slug()}-${today()}.json`, JSON.stringify({ ...S, savedAt: new Date().toISOString() }, null, 2), 'application/json', 'Study saved to your downloads.');
 }
 $('#saveBtn').addEventListener('click', saveStudy);
 $('#saveBtn2').addEventListener('click', saveStudy);
@@ -1199,16 +1232,15 @@ $('#openFile').addEventListener('change', async (e) => {
 });
 $('#newBtn').addEventListener('click', () => {
   if (T.on) { toast('Stop the stopwatch first.'); return; }
-  if (S.elements.length && !confirm('Start a new, empty study? Save this one first if you need it.')) return;
-  S = blank(); PROP = null; F.station = '*'; persist(); showTab('setup');
+  const go = () => { S = blank(); PROP = null; F.station = '*'; persist(); showTab('setup'); };
+  if (S.elements.length) ask('Start a new, empty study? Save this one first if you need it.', 'Start new study', go); else go();
 });
 $('#sampleSel').addEventListener('change', (e) => {
   const v = e.target.value; e.target.value = '';
   if (!v) return;
   if (T.on) { toast('Stop the stopwatch first.'); return; }
-  if (S.elements.length && !confirm('Replace your current study with the sample? Save yours first if you need it.')) return;
-  S = v === 'long' ? sampleLong() : sampleShort(); PROP = null; F.station = '*';
-  persist(); showTab('results'); toast('Sample loaded. All numbers are made up.');
+  const go = () => { S = v === 'long' ? sampleLong() : sampleShort(); PROP = null; F.station = '*'; persist(); showTab('results'); toast('Sample loaded. All numbers are made up.'); };
+  if (S.elements.length) ask('Replace your current study with the sample? Save yours first if you need it.', 'Load sample', go); else go();
 });
 $('#csvStd').addEventListener('click', () => {
   const st = allStats(), { total, labor } = totals(st), u = U().label;
@@ -1293,8 +1325,7 @@ $('#lxBody').addEventListener('click', (e) => {
   let n = 0;
   for (const s of LX.stops) { const t = lxTime(s.src, st, gs); if (t != null) { doc.paths[s.pi].pts[s.qi].wait = Math.round(t * 10) / 10; n++; } }
   doc.timesFrom = { study: S.study.name || '', date: today(), note: 'Stop waits set from standard times (seconds per unit).' };
-  download(LX.file.replace(/\.json$/i, '') + '-timed.json', JSON.stringify(doc, null, 2), 'application/json');
-  toast(`Saved. ${n} stop${n === 1 ? '' : 's'} got new times.`);
+  download(LX.file.replace(/\.json$/i, '') + '-timed.json', JSON.stringify(doc, null, 2), 'application/json', `Saved. ${n} stop${n === 1 ? '' : 's'} got new times.`);
 });
 
 /* ---------------- Samples (made-up numbers) ---------------- */
@@ -1353,6 +1384,7 @@ function sampleShort() {
 }
 
 /* ---------------- Start ---------------- */
+if (inViewer()) { $('#printBtn').closest('.row').previousElementSibling.hidden = true; $('#printBtn').closest('.row').hidden = true; }
 try { const t = localStorage.getItem(KEY + ':tab'); if (t && $(`#tab-${t}`)) tab = t; } catch (e) { /* ignore */ }
 showTab(tab);
 window.addEventListener('beforeunload', (e) => { if (T.on) { e.preventDefault(); e.returnValue = ''; } });
