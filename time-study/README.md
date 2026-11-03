@@ -21,7 +21,7 @@ All sample numbers are made up. Company data never goes in this repository.
 2. **Processes & times:** one row per process with its station, type, crew size, "comes after" and observations. Each Obs column is one unit you watched, labelled with its serial number. You can paste hundreds of rows straight from Excel, filter by station, and search. There's also an optional stopwatch for short processes.
 3. **Standard times:** average → normal → standard → per unit → labor, grouped by station with subtotals. It flags unusual observations (tap one to leave it out) and says how many observations each process still needs.
 4. **Stations & balance:** a yamazumi chart against takt, a station summary, and warnings when a station is over takt. **Suggest** re-splits the processes using ranked positional weight. Nothing changes until you accept it.
-5. **Files & links:** save or open the study (.json), and download standard times, observations or a station summary (.csv). You can edit the observations file in Excel and paste it back. You can also print a PDF report and send times to Layout Extruder flow-path stops.
+5. **Files & links:** save or open the study (.json), and download **one Excel workbook (.xlsx)** with four sheets: Summary, Standard times, Observations and Stations. You can edit the Observations sheet in Excel and paste it back. Single .csv files are still there if you want them. You can also print a PDF report from the offline file and send times to Layout Extruder flow-path stops.
 
 ## Formulas
 
