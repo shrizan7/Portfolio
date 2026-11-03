@@ -1355,6 +1355,9 @@ function sampleLong() {
     });
     s.cycles.push(cy);
   });
+  // occasional work: a wire spool change once every 5 units, seen on two of the three units
+  s.elements.push({ id: 'e28', station: 'Frame & base', name: 'Change welding wire spool', type: 'manual', crew: 1, every: 5, after: [], rating: null, allow: null });
+  s.cycles[0].t.e28 = 15 * 60; s.cycles[2].t.e28 = 14 * 60 + 24;
   s.cycles[1].t.e17 = 64 * 60; s.cycles[1].x.e17 = true; // flagged: waited for parts
   s.cycles[0].t.e21 = 61 * 60;                           // unusual, left in so the page points it out
   return s;
