@@ -19,7 +19,7 @@ All sample numbers are made up. Company data never goes in this repository.
    - confidence and accuracy
    - demand, which gives takt time
 2. **Processes & times:** one row per process with its station, type, crew size, "comes after" and observations. Each Obs column is one unit you watched, labelled with its serial number. You can paste hundreds of rows straight from Excel, filter by station, and search. There's also an optional stopwatch for short processes.
-3. **Standard times:** average → normal → standard → per unit → labor, grouped by station with subtotals. It flags unusual observations (tap one to leave it out) and says how many observations each process still needs.
+3. **Standard times:** average → normal → standard → labor, grouped by station with subtotals. It flags unusual observations (tap one to leave it out) and says how many observations each process still needs.
 4. **Stations & balance:** a yamazumi chart against takt, a station summary, and warnings when a station is over takt. **Suggest** re-splits the processes using ranked positional weight. Nothing changes until you accept it.
 5. **Files & links:** save or open the study (.json), and download standard times, observations or a station summary (.csv). You can edit the observations file in Excel and paste it back. You can also print a PDF report and send times to Layout Extruder flow-path stops.
 
@@ -29,12 +29,11 @@ All sample numbers are made up. Company data never goes in this repository.
 |---|---|
 | Normal time | average × rating ÷ 100 |
 | Standard time | normal × (1 + allowance ÷ 100) |
-| Per unit | standard ÷ "once every N units" |
-| Labor per unit | per unit × crew |
+| Labor | standard × crew |
 | Takt time | available time per day or week ÷ units needed |
 | Observations needed | (z ÷ accuracy × √(n·Σx² − (Σx)²) ÷ Σx)², z = 1.645 / 1.96 / 2.576 |
 | Westinghouse rating | 100 × (1 + skill + effort + conditions + consistency) |
-| Minimum operators | total labor per unit ÷ takt, rounded up |
+| Minimum operators | total labor ÷ takt, rounded up |
 | Balance efficiency | total work ÷ (stations × slowest station) |
 
 The default allowances are personal 5%, fatigue 4%, delay 6% and other 0%. Replace them with your plant's rule. Machine-paced processes get no rating and no allowance unless you set them.
@@ -43,6 +42,6 @@ The default allowances are personal 5%, fatigue 4%, delay 6% and other 0%. Repla
 
 Without a header row, columns are read as **Station · Process · Obs 1 · Obs 2 …**
 
-With a header row, these columns are recognised: Station, Process (or Step, Operation, Task), Type, Crew, Every, Comes after. Any other column is an observation, and its header becomes the label, for example a serial number.
+With a header row, these columns are recognised: Station, Process (or Step, Operation, Task), Type, Crew, Comes after. Any other column is an observation, and its header becomes the label, for example a serial number.
 
 Times can be decimals in the chosen unit, or `h:mm:ss`. A `*` after a time means "leave this one out".
