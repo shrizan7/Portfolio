@@ -91,25 +91,32 @@ th { text-align: left; font-weight: 600; font-size: 12px; color: var(--muted); p
 .tall thead th { position: sticky; top: 0; z-index: 1; }
 td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.over { color: var(--bad); font-weight: 650; }
 tr.sub td { background: var(--sub); font-weight: 650; }
 tr.total td { font-weight: 700; border-top: 2px solid var(--muted); }
 tr.grp td { background: var(--sub); font-weight: 650; padding-top: 8px; }
 .grid td, .grid th { padding: 3px 4px; }
 .grid input, .grid select { padding: 5px 6px; font-size: 13px; background: var(--panel); }
-.grid .w-st { width: 130px; } .grid .w-name { width: 260px; } .grid .w-type { width: 104px; }
+.grid .w-st { width: 130px; } .grid .w-name { width: 250px; } .grid .w-type { width: 104px; }
 .grid .w-num { width: 58px; text-align: right; } .grid .w-after { width: 70px; }
-.grid .w-obs { width: 76px; text-align: right; font-family: var(--mono); }
-.grid .w-obs.off { text-decoration: line-through; color: var(--muted); }
-.grid .w-lab { width: 86px; font-size: 12px; padding: 4px 5px; }
+.grid .w-qty { width: 46px; text-align: right; }
+.grid .w-obs { width: 84px; text-align: right; font-family: var(--mono); }
+.grid .w-obs.off { color: var(--muted); font-style: italic; }
+.grid .w-lab { width: 92px; font-size: 12px; padding: 4px 5px; }
+.grid .w-mod { width: 92px; font-size: 12px; padding: 4px 5px; }
+.grid th.qh { background: var(--sub); text-align: center; }
 .grid .tools { white-space: nowrap; }
 .grid .tools .btn { padding: 5px 7px; }
-.obsh { display: flex; gap: 2px; align-items: center; }
-.res td:nth-child(2) { min-width: 180px; }
+.obsh { display: flex; flex-direction: column; gap: 2px; }
+.obsh .row { gap: 2px; flex-wrap: nowrap; }
+.res td:nth-child(2) { min-width: 190px; }
 .res input.reason { width: 200px; text-align: left; font-family: var(--font); }
 .res input.need { border-color: var(--warn); background: var(--warn-bg); }
 .res input { width: 64px; padding: 5px 6px; font-size: 13px; text-align: right; }
-.chips { display: flex; flex-wrap: wrap; gap: 3px; max-width: 300px; }
+.flagline { display: block; margin-top: 3px; font-size: 11px; color: var(--warn); }
+.chips { display: flex; flex-wrap: wrap; gap: 3px; max-width: 320px; }
 .chip { font: 12px var(--mono); padding: 3px 6px; border-radius: 4px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+.chip sup { font-size: 9px; color: var(--muted); }
 .chip.sus { border-color: var(--warn); background: var(--warn-bg); color: var(--warn); }
 .chip.off { text-decoration: line-through; color: var(--muted); background: transparent; border-style: dashed; }
 .tag { font-size: 11px; padding: 2px 6px; border-radius: 99px; border: 1px solid var(--line); white-space: nowrap; }
@@ -162,6 +169,10 @@ tr.grp td { background: var(--sub); font-weight: 650; padding-top: 8px; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 .formula { font: 12px/1.7 var(--mono); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
 ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; max-width: 80ch; }
+.bars { display: flex; flex-direction: column; gap: 6px; }
+.barrow { display: grid; grid-template-columns: minmax(120px, 1.2fr) 3fr auto; gap: 8px; align-items: center; font-size: 13px; }
+.barrow .track { height: 12px; background: var(--sub); border-radius: 3px; overflow: hidden; }
+.barrow .fill { height: 100%; background: var(--c-walk); }
 
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 6px; font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgba(0,0,0,.25); z-index: 10; }
 .print-head { display: none; }
@@ -170,7 +181,7 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
 .askin { max-width: 1280px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; font-weight: 600; color: var(--ink); }
 @media print {
   body { background: #fff; color: #000; padding: 0; }
-  .noprint, .tabs, .toast { display: none !important; }
+  .noprint, .tabs, .toast, .askbar { display: none !important; }
   .panel { display: flex !important; }
   #tab-setup, #tab-proc, #tab-files { display: none !important; }
   .card, .kpi { break-inside: avoid; border-color: #bbb; }
@@ -189,7 +200,7 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
     <div class="actions noprint">
       <select id="sampleSel" aria-label="Load a sample study">
         <option value="">Load sample…</option>
-        <option value="long">Long process: padmount build (minutes)</option>
+        <option value="long">Long process: 3 padmount models (minutes)</option>
         <option value="short">Short cycle: cable assembly (seconds)</option>
       </select>
       <button class="btn" id="newBtn" type="button">New study</button>
@@ -200,11 +211,12 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
   </header>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
-    <button type="button" role="tab" data-tab="setup" aria-selected="true">1 · Setup &amp; constants</button>
+    <button type="button" role="tab" data-tab="setup" aria-selected="true">1 · Setup &amp; models</button>
     <button type="button" role="tab" data-tab="proc" aria-selected="false">2 · Processes &amp; times</button>
     <button type="button" role="tab" data-tab="results" aria-selected="false">3 · Standard times</button>
     <button type="button" role="tab" data-tab="balance" aria-selected="false">4 · Stations &amp; balance</button>
-    <button type="button" role="tab" data-tab="files" aria-selected="false">5 · Files &amp; links</button>
+    <button type="button" role="tab" data-tab="delays" aria-selected="false">5 · Delays</button>
+    <button type="button" role="tab" data-tab="files" aria-selected="false">6 · Files &amp; links</button>
   </nav>
 
   <div class="print-head"><h2 id="printTitle"></h2></div>
@@ -218,7 +230,7 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
         <div class="form">
           <label class="field wide"><span>Study name</span><input type="text" data-k="study.name" placeholder="e.g. Padmount build, line 1"></label>
           <label class="field"><span>Line or cell</span><input type="text" data-k="study.cell"></label>
-          <label class="field"><span>Product or model</span><input type="text" data-k="study.part"></label>
+          <label class="field"><span>Product family</span><input type="text" data-k="study.part"></label>
           <label class="field"><span>Operators observed</span><input type="text" data-k="study.operator" placeholder="Names or IDs"></label>
           <label class="field"><span>Observer</span><input type="text" data-k="study.observer"></label>
           <label class="field"><span>Date</span><input type="date" data-k="study.date"></label>
@@ -241,6 +253,21 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
         </div>
         <p class="derived" id="baselineChange"></p>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>Models and demand</h2>
+      <p class="note">List each model built on this line and how many of each are needed. The mix is worked out for you, and takt time uses the total of all models.</p>
+      <div class="scroll"><table id="modelTable"></table></div>
+      <div class="row"><button class="btn" id="addModel" type="button">+ Add model</button></div>
+      <div class="form">
+        <label class="field"><span>Demand is per</span><select data-k="demand.per"><option value="day">Day</option><option value="week">Week</option></select></label>
+        <label class="field"><span>Work days per week</span><input type="number" min="0" step="any" data-k="demand.days" data-num></label>
+        <label class="field"><span>Shifts per day</span><input type="number" min="0" step="any" data-k="demand.shifts" data-num></label>
+        <label class="field"><span>Minutes per shift</span><input type="number" min="0" step="any" data-k="demand.shiftMin" data-num></label>
+        <label class="field"><span>Breaks and meetings (min per shift)</span><input type="number" min="0" step="any" data-k="demand.breakMin" data-num></label>
+      </div>
+      <p class="derived" id="taktOut">—</p>
     </div>
 
     <div class="card">
@@ -282,23 +309,9 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
             <label class="field"><span>Confidence</span><select data-k="constants.confidence"><option value="90">90%</option><option value="95">95%</option><option value="99">99%</option></select></label>
             <label class="field"><span>Accuracy ± %</span><input type="number" min="1" step="any" data-k="constants.accuracy" data-num></label>
           </div>
-          <p class="note">Used to tell you how many observations each process needs. 95% and ±5% is the usual standard. Long processes often use ±10%.</p>
+          <p class="note">Sets how many observations each process needs before its time counts as final. 95% and ±5% is the usual standard. Long processes often use ±10%.</p>
         </div>
       </div>
-    </div>
-
-    <div class="card">
-      <h2>Demand and takt time</h2>
-      <p class="note">Takt time is how often one unit must be finished to meet demand: available time ÷ units needed.</p>
-      <div class="form">
-        <label class="field"><span>Units needed</span><input type="number" min="0" step="any" data-k="demand.units" data-num></label>
-        <label class="field"><span>Per</span><select data-k="demand.per"><option value="day">Day</option><option value="week">Week</option></select></label>
-        <label class="field"><span>Work days per week</span><input type="number" min="0" step="any" data-k="demand.days" data-num></label>
-        <label class="field"><span>Shifts per day</span><input type="number" min="0" step="any" data-k="demand.shifts" data-num></label>
-        <label class="field"><span>Minutes per shift</span><input type="number" min="0" step="any" data-k="demand.shiftMin" data-num></label>
-        <label class="field"><span>Breaks and meetings (min per shift)</span><input type="number" min="0" step="any" data-k="demand.breakMin" data-num></label>
-      </div>
-      <p class="derived" id="taktOut">—</p>
     </div>
   </section>
 
@@ -306,7 +319,7 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
   <section class="panel" id="tab-proc" hidden>
     <div class="card">
       <div class="row between"><h2>Processes and observed times</h2><span class="note" id="procCount"></span></div>
-      <p class="note">One row per process. Each <b>Obs</b> column is one unit you watched: put its serial number at the top, then type how long each process took on that unit, in <b id="unitName">minutes</b>. Leave a cell empty if you didn’t see that process on that unit. <b>Comes after</b> lists the process numbers that must be done first (used to suggest a balance).</p>
+      <p class="note">One row per process. <b>Qty</b> says how many times the process is done on one unit of each model: 0 = not used, 1 = once, 2 = twice. <b>Every</b> is only for occasional work, such as a setup done once every 4 units. Each <b>Obs</b> column is one unit you watched: put its serial number and model at the top, then type how long the process took, in <b id="unitName">minutes</b>. If it was done twice on that unit, type both times separated by a semicolon, like <code>33; 41</code>. A <code>*</code> after a time leaves it out of the averages.</p>
       <div class="row end noprint">
         <label class="field" style="width:200px"><span>Show station</span><select id="fStation"></select></label>
         <label class="field" style="width:220px"><span>Search</span><input type="text" id="fSearch" placeholder="Process name"></label>
@@ -315,13 +328,14 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
       </div>
       <div class="tall"><table class="grid" id="procTable"></table></div>
       <datalist id="stationNames"></datalist>
+      <datalist id="serialNames"></datalist>
     </div>
     <div class="card">
       <details id="pasteBox">
         <summary>Paste many rows from Excel</summary>
         <div class="panel" style="display:flex">
-          <p class="note">Copy the cells in Excel (with or without a header row) and paste them below. Without headers, the columns are read as: <b>Station · Process · Obs 1 · Obs 2 · …</b> With headers, these names are recognised: Station, Process (or Step, Operation, Task), Type, Crew, Every, Comes after. Any other column is read as an observation, using its header as the label (for example a serial number). Times are in the unit set on Setup. A <code>*</code> after a time means “leave this one out”.</p>
-          <textarea id="pasteText" rows="7" placeholder="Station	Process	Unit 101	Unit 102&#10;Frame	Weld sill channels	52	49"></textarea>
+          <p class="note">Copy the cells in Excel (with or without a header row) and paste them below. Without headers, the columns are read as <b>Station · Process · Obs 1 · Obs 2 · …</b> With headers, these are recognised: Station, Process (or Step, Operation, Task), Type, Crew, Every, Comes after, Own rating %, Rating reason, Own allowance %, and <b>Qty</b> followed by a model name (for example <code>Qty Model C</code>). Any other column is an observation. Put the model in square brackets after the serial number, like <code>105 [Model C]</code>. Times are in the unit set on Setup. Two times in one cell (<code>33; 41</code>) mean the process was done twice on that unit.</p>
+          <textarea id="pasteText" rows="7" placeholder="Station	Process	Qty Model A	Qty Model C	101 [Model A]	105 [Model C]&#10;Enclosure	Install access panel	1	2	32	33; 41"></textarea>
           <div class="row">
             <label class="row small"><input type="checkbox" id="pasteReplace"> Replace all current processes and times</label>
             <button class="btn primary" id="pasteGo" type="button">Add these rows</button>
@@ -342,25 +356,32 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
     <div class="kpis" id="kpis"></div>
     <div class="callout" id="resultsNote" hidden></div>
     <div class="card">
+      <h2>Labor and time per unit, by model</h2>
+      <div class="scroll"><table id="modelResTable"></table></div>
+      <p class="note">Each model’s time adds up the standard time of every process it uses, times how often it uses it. The weighted average uses your real mix, and is the number to use for staffing and capacity.</p>
+    </div>
+    <div class="card">
       <div class="row between">
         <h2>Standard time per process</h2>
         <label class="field noprint" style="width:200px"><span>Show station</span><select id="rStation"></select></label>
       </div>
-      <p class="note">Tap an observation to leave it out (or put it back). Orange ones are more than 30% away from that process’s middle value, so check whether something unusual happened. Empty rating or allowance boxes use the constants from Setup. All times are in <b class="unitName">minutes</b>.</p>
+      <p class="note">Tap an observation to leave it out (or put it back). A small number after a time marks the 2nd or 3rd time on that unit. Orange times are more than 30% away from that process’s middle value. <b>Standard</b> is per occurrence (one panel, one weld). <b>Per unit</b> is the weighted average across the mix. <b>Preliminary</b> means it doesn’t have enough observations yet. All times are in <b class="unitName">minutes</b>.</p>
       <div class="tall"><table class="res" id="resTable"></table></div>
     </div>
     <div class="card">
       <details>
         <summary>How the numbers are worked out</summary>
         <div class="formula">
-          Average (observed) = mean of the observations you kept<br>
+          Average (observed) = mean of every kept observation, all models and occurrences together<br>
           Normal time = Average × Rating ÷ 100<br>
-          Standard time = Normal time × (1 + Allowance ÷ 100)<br>
-          Per unit = Standard time ÷ “once every N units”<br>
-          Labor per unit = Per unit × Crew (people working on it at the same time)<br>
-          Takt time = Available time per period ÷ Units needed per period<br>
+          Standard time (per occurrence) = Normal time × (1 + Allowance ÷ 100)<br>
+          Time per unit for a model = Standard × Qty for that model ÷ Every<br>
+          Labor per unit for a model = Σ (time per unit × Crew)<br>
+          Mix = model demand ÷ total demand.  Weighted per unit = Σ (Mix × time per unit for that model)<br>
+          Takt time = Available time per period ÷ Total units needed (all models)<br>
           Observations needed = ( z ÷ accuracy × √(n·Σx² − (Σx)²) ÷ Σx )²,  z = 1.645 / 1.96 / 2.576 for 90 / 95 / 99%<br>
-          Minimum operators = Total labor per unit ÷ Takt time, rounded up<br>
+          Same work? = flagged when the averages of two models, or of the 1st and 2nd time on a unit, differ by more than 15% and by more than twice the normal spread of that process<br>
+          Minimum operators = Weighted labor per unit ÷ Takt time, rounded up<br>
           Westinghouse rating = 100 × (1 + skill + effort + conditions + consistency)
         </div>
       </details>
@@ -369,9 +390,15 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
 
   <!-- 4 BALANCE -->
   <section class="panel" id="tab-balance" hidden>
+    <div class="card">
+      <div class="row end">
+        <label class="field" style="width:260px"><span>Show</span><select id="balView"></select></label>
+      </div>
+      <p class="note">Stations come from the Station column on the Processes tab. The weighted average is right for staffing, but a single model can still overload a station when it comes down the line. The warnings below check every model.</p>
+    </div>
     <div class="kpis" id="balKpis"></div>
     <div class="card chart">
-      <h2>Work per station today (yamazumi)</h2>
+      <h2 id="chartTitle">Work per station (yamazumi)</h2>
       <div id="chart"></div>
       <div class="legend">
         <span><i class="dot" style="background:var(--c-manual)"></i>Manual</span>
@@ -382,13 +409,13 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
     </div>
     <div class="callout warn" id="balWarn" hidden></div>
     <div class="card">
-      <h2>Station summary</h2>
+      <h2>Station time per model</h2>
       <div class="scroll"><table id="stTable"></table></div>
-      <p class="note">Stations come from the Station column on the Processes tab. Station time adds up the standard times of its processes in one unit. Labor multiplies each by its crew.</p>
+      <p class="note">Red means that model is over takt at that station. Labor multiplies each process by its crew.</p>
     </div>
     <div class="card">
       <h2>Suggest a better balance</h2>
-      <p class="note">Re-splits the processes into stations so each one is close to the target, using the ranked positional weight method and never putting a process before one it has to come after. Nothing changes until you press “Use this split”.</p>
+      <p class="note">Re-splits the processes into stations so each is close to the target (weighted average), using the ranked positional weight method and never putting a process before one it has to come after. Nothing changes until you press “Use this split”.</p>
       <div class="row end">
         <label class="field" style="width:200px"><span>Target per station (<span class="unitName">min</span>)</span><input type="number" min="0" step="any" id="target" placeholder="Takt"></label>
         <button class="btn primary" id="suggest" type="button">Suggest</button>
@@ -397,7 +424,34 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
     </div>
   </section>
 
-  <!-- 5 FILES -->
+  <!-- 5 DELAYS -->
+  <section class="panel" id="tab-delays" hidden>
+    <div class="card">
+      <h2>Log a delay</h2>
+      <p class="note">A delay is time lost to something that isn’t the work itself: waiting for parts, the crane, a drawing answer, rework. Log it here instead of in the process times, so standard times stay clean and the lost time is still counted.</p>
+      <form id="delayForm" class="form">
+        <label class="field"><span>Date</span><input type="date" id="dDate"></label>
+        <label class="field"><span>Unit serial</span><input type="text" id="dSerial" list="serialNames" placeholder="e.g. 105"></label>
+        <label class="field"><span>Station</span><input type="text" id="dStation" list="stationNames"></label>
+        <label class="field"><span>Reason</span><select id="dReason"></select></label>
+        <label class="field" id="dOtherWrap" hidden><span>Other reason</span><input type="text" id="dOther"></label>
+        <label class="field"><span>How long (<span class="unitName">min</span>)</span><input type="text" id="dDur" inputmode="decimal" placeholder="e.g. 25 or 1:10:00"></label>
+        <label class="field wide"><span>Note (optional)</span><input type="text" id="dNote" placeholder="e.g. busbar kit not kitted"></label>
+        <div class="row"><button class="btn primary" type="submit">Add delay</button></div>
+      </form>
+    </div>
+    <div class="kpis" id="delayKpis"></div>
+    <div class="cols">
+      <div class="card"><h2>By reason</h2><div id="delayByReason"></div></div>
+      <div class="card"><h2>By station</h2><div id="delayByStation"></div></div>
+    </div>
+    <div class="card">
+      <h2>All delays</h2>
+      <div class="tall"><table id="delayTable"></table></div>
+    </div>
+  </section>
+
+  <!-- 6 FILES -->
   <section class="panel" id="tab-files" hidden>
     <div class="cols">
       <div class="card">
@@ -411,21 +465,22 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
         <div class="row">
           <button class="btn primary" id="xlsxBtn" type="button">Download Excel workbook (.xlsx)</button>
         </div>
-        <p class="note">One file with four sheets: Summary, Standard times, Observations and Stations. You can edit the Observations sheet in Excel, then copy it and paste it back in on the Processes tab.</p>
+        <p class="note">One file with these sheets: Summary, Models &amp; mix, Standard times, Process × model, Observations, Stations per model and Delays. You can edit the Observations sheet in Excel, then copy it and paste it back in on the Processes tab.</p>
         <details>
           <summary class="small">Single sheets as .csv files</summary>
           <div class="row">
             <button class="btn sm" id="csvStd" type="button">Standard times (.csv)</button>
             <button class="btn sm" id="csvRaw" type="button">Processes and observations (.csv)</button>
-            <button class="btn sm" id="csvBal" type="button">Station summary (.csv)</button>
+            <button class="btn sm" id="csvBal" type="button">Stations per model (.csv)</button>
+            <button class="btn sm" id="csvDel" type="button">Delays (.csv)</button>
           </div>
         </details>
-        <h2 style="margin-top:6px">Report</h2>
-        <div class="row"><button class="btn" id="printBtn" type="button">Print or save as PDF</button></div>
+        <h2 style="margin-top:6px" id="reportHead">Report</h2>
+        <div class="row" id="reportRow"><button class="btn" id="printBtn" type="button">Print or save as PDF</button></div>
       </div>
       <div class="card">
         <h2>Send times to Layout Extruder</h2>
-        <p class="note">Puts your standard times on the stops of a Layout Extruder flow path, so its cycle and waiting times use real numbers.</p>
+        <p class="note">Puts your standard times on the stops of a Layout Extruder flow path, so its cycle and waiting times use real numbers. Station times are the weighted average across the mix.</p>
         <ol class="how small">
           <li>In Layout Extruder, press <b>Save paths &amp; text to file</b>.</li>
           <li>Open that file here. Each stop gets matched to a station or process with the same name.</li>
@@ -461,28 +516,34 @@ const WH = {
   cond: { label: 'Conditions', opts: [['A Ideal', .06], ['B Excellent', .04], ['C Good', .02], ['D Average', 0], ['E Fair', -.03], ['F Poor', -.07]] },
   cons: { label: 'Consistency', opts: [['A Perfect', .04], ['B Excellent', .03], ['C Good', .01], ['D Average', 0], ['E Fair', -.02], ['F Poor', -.04]] },
 };
+const REASONS = ['Waiting for parts', 'Waiting for crane or forklift', 'Drawing or engineering question', 'Rework or fixing a defect', 'Equipment or tool down', 'Waiting for inspection', 'Waiting for another station', 'Other'];
+const SAME_WORK = 0.15;
 let seq = 0;
 const newId = (p) => p + Date.now().toString(36) + (seq++).toString(36);
 const today = () => new Date().toISOString().slice(0, 10);
 const fmt = (v, dp = 1) => (v == null || !isFinite(v) ? '—' : v.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp }));
 const numOrNull = (v) => { if (v === '' || v == null) return null; const n = parseFloat(v); return isFinite(n) ? n : null; };
+const ord = (n) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
 
 /* ---------------- State ---------------- */
 function blank() {
   return {
-    format: 'ie-time-study', version: 2,
+    format: 'ie-time-study', version: 3,
     study: { name: '', cell: '', part: '', operator: '', observer: '', date: today(), notes: '' },
     baseline: { metric: '', before: null, after: null, unit: '', date: '', how: '', higherBetter: 'yes' },
-    demand: { units: null, per: 'day', days: 5, shifts: 1, shiftMin: 480, breakMin: 50 },
+    demand: { per: 'day', days: 5, shifts: 1, shiftMin: 480, breakMin: 50 },
+    models: [{ id: newId('m'), name: 'Model 1', demand: null }],
     constants: { unit: 'min', rating: 100, ratingNote: '', personal: 5, fatigue: 4, delay: 6, other: 0, confidence: '95', accuracy: 5, wh: { skill: 'D Average', effort: 'D Average', cond: 'D Average', cons: 'D Average' } },
     elements: [],
     cycles: [],
+    delays: [],
     balanceTarget: null,
   };
 }
 let S = load() || sampleLong(); // first visit opens on the made-up sample; “New study” starts empty
 let tab = 'setup';
 const F = { station: '*', q: '' };
+let BAL_VIEW = '';
 
 function load() {
   try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); return s && s.format === 'ie-time-study' ? normalize(s) : null; } catch (e) { return null; }
@@ -492,32 +553,53 @@ function persist() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage blocked: files still work */ } }, 250);
 }
+// Opens any saved version. Studies from before models existed become one model with every quantity 1.
 function normalize(s) {
   const b = blank();
-  const out = { ...b, ...s, version: 2 };
+  const out = { ...b, ...s, version: 3 };
   for (const k of ['study', 'baseline', 'demand', 'constants']) out[k] = { ...b[k], ...(s[k] || {}) };
-  out.constants.ratingNote = String(out.constants.ratingNote || '');
   out.constants.wh = { ...b.constants.wh, ...((s.constants || {}).wh || {}) };
+  out.constants.ratingNote = String(out.constants.ratingNote || '');
   if (!UNITS[out.constants.unit]) out.constants.unit = 'min';
   out.constants.confidence = String(out.constants.confidence);
   if (!Z[out.constants.confidence]) out.constants.confidence = '95';
-  if (s.version !== 2 && !s.constants) {
+  if (!s.version || (s.version < 2 && !s.constants)) {
     out.constants.unit = 's';
     if (s.allow) Object.assign(out.constants, { personal: +s.allow.personal || 0, fatigue: +s.allow.fatigue || 0, delay: +s.allow.delay || 0 });
   }
+  // models
+  if (Array.isArray(s.models) && s.models.length) out.models = s.models.map((m, i) => ({ id: String(m.id || newId('m')), name: String(m.name || `Model ${i + 1}`), demand: numOrNull(m.demand) }));
+  else out.models = [{ id: 'm1', name: (s.study && s.study.part) || 'Standard model', demand: numOrNull(s.demand && s.demand.units) }];
+  delete out.demand.units;
+  const mids = out.models.map((m) => m.id);
   const oldSt = s.balance && Array.isArray(s.balance.stations) ? s.balance : null;
   out.elements = (Array.isArray(s.elements) ? s.elements : []).map((e) => {
     let station = e.station != null ? String(e.station) : '';
     if (!station && oldSt && oldSt.assign) { const st = oldSt.stations.find((x) => x.id === oldSt.assign[e.id]); if (st) station = st.name; }
+    const qty = {};
+    for (const [k, v] of Object.entries(e.qty || {})) if (mids.includes(k) && isFinite(+v) && +v >= 0) qty[k] = +v;
     return {
       id: String(e.id || newId('e')), station, name: String(e.name || ''), type: TYPES[e.type] ? e.type : 'manual',
       crew: +e.crew > 0 ? +e.crew : 1, every: +e.every > 0 ? +e.every : 1, after: Array.isArray(e.after) ? e.after.map(String) : [],
-      rating: numOrNull(e.rating), ratingNote: String(e.ratingNote || ''), allow: numOrNull(e.allow),
+      rating: numOrNull(e.rating), ratingNote: String(e.ratingNote || ''), allow: numOrNull(e.allow), qty,
     };
   });
-  out.cycles = (Array.isArray(s.cycles) ? s.cycles : []).map((c, i) => ({
-    id: String(c.id || newId('c')), label: String(c.label || ''), when: c.when || '', t: { ...(c.t || {}) }, x: { ...(c.x || {}) },
-  }));
+  out.cycles = (Array.isArray(s.cycles) ? s.cycles : []).map((c) => {
+    const t = {}, x = {};
+    for (const [k, v] of Object.entries(c.t || {})) {
+      const arr = (Array.isArray(v) ? v : [v]).map(Number).filter((n) => isFinite(n) && n >= 0);
+      if (arr.length) t[k] = arr;
+    }
+    for (const [k, v] of Object.entries(c.x || {})) {
+      const arr = v === true ? [0] : Array.isArray(v) ? v.map(Number).filter((n) => Number.isInteger(n) && n >= 0) : [];
+      if (arr.length && t[k]) x[k] = arr.filter((i) => i < t[k].length);
+    }
+    return { id: String(c.id || newId('c')), label: String(c.label || ''), model: mids.includes(c.model) ? c.model : mids[0], when: c.when || '', t, x };
+  });
+  out.delays = (Array.isArray(s.delays) ? s.delays : []).map((d) => ({
+    id: String(d.id || newId('d')), date: String(d.date || ''), serial: String(d.serial || ''), station: String(d.station || ''),
+    reason: String(d.reason || 'Other'), dur: Math.max(0, +d.dur || 0), note: String(d.note || ''),
+  })).filter((d) => d.dur > 0);
   out.balanceTarget = numOrNull(s.balanceTarget);
   delete out.balance; delete out.allow;
   return out;
@@ -525,6 +607,11 @@ function normalize(s) {
 const elById = (id) => S.elements.find((e) => e.id === id);
 const elNo = (id) => S.elements.findIndex((e) => e.id === id) + 1;
 const obsLabel = (c, i) => c.label || `Obs ${i + 1}`;
+const modelById = (id) => S.models.find((m) => m.id === id);
+const modelName = (id) => (modelById(id) || { name: '?' }).name;
+const qtyOf = (e, mid) => (e.qty && e.qty[mid] != null ? e.qty[mid] : 1);
+const valsOf = (c, id) => c.t[id] || [];
+const offOf = (c, id) => c.x[id] || [];
 
 /* ---------------- Units ---------------- */
 const U = () => UNITS[S.constants.unit] || UNITS.min;
@@ -543,6 +630,23 @@ function parseTime(str) {
   const n = parseFloat(s);
   return isFinite(n) && n >= 0 && /^[\d.]+$/.test(s) ? n * U().f : NaN;
 }
+// One observation cell: "33; 41*" -> two times, the second left out
+function parseCell(str) {
+  const s = String(str ?? '').trim();
+  if (!s) return { vals: [], off: [] };
+  const parts = s.includes(';') ? s.split(';') : /,\s/.test(s) ? s.split(/,\s+/) : [s];
+  const vals = [], off = [];
+  for (const p0 of parts) {
+    let p = p0.trim(); if (!p) continue;
+    const o = /\*$/.test(p); p = p.replace(/\*$/, '').trim();
+    const v = parseTime(p);
+    if (v == null || isNaN(v)) return null;
+    if (o) off.push(vals.length);
+    vals.push(Math.round(v * 100) / 100);
+  }
+  return { vals, off };
+}
+const cellText = (c, id, conv = inVal) => valsOf(c, id).map((v, i) => conv(v) + (offOf(c, id).includes(i) ? '*' : '')).join('; ');
 function fmtClock(sec) {
   if (sec < 60) return sec.toFixed(1);
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), x = Math.floor(sec % 60);
@@ -559,18 +663,35 @@ function availSec() {
   const v = (+d.shifts || 0) * ((+d.shiftMin || 0) - (+d.breakMin || 0)) * 60 * (d.per === 'week' ? (+d.days || 0) : 1);
   return v > 0 ? v : null;
 }
-function takt() { const a = availSec(), u = +S.demand.units; return a && u > 0 ? a / u : null; }
+const totalDemand = () => S.models.reduce((a, m) => a + (+m.demand > 0 ? +m.demand : 0), 0);
+function takt() { const a = availSec(), u = totalDemand(); return a && u > 0 ? a / u : null; }
+function mixOf(mid) { const t = totalDemand(), m = modelById(mid); return t > 0 ? (+m.demand > 0 ? +m.demand : 0) / t : 1 / S.models.length; }
 const median = (xs) => { const a = [...xs].sort((p, q) => p - q), m = a.length >> 1; return a.length ? (a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2) : null; };
+function groupMeans(list, key) {
+  const m = new Map();
+  for (const r of list) { const g = m.get(r[key]) || { s: 0, ss: 0, n: 0 }; g.s += r.v; g.ss += r.v * r.v; g.n++; m.set(r[key], g); }
+  return [...m.entries()].map(([k, g]) => ({ k, mean: g.s / g.n, n: g.n, ss: g.ss, s: g.s }));
+}
+// Spread inside the groups (pooled), from groups with 2 or more observations; null if none has
+function pooledSd(gs) {
+  let num = 0, df = 0;
+  for (const g of gs) if (g.n >= 2) { num += Math.max(0, g.ss - g.s * g.s / g.n); df += g.n - 1; }
+  return df ? Math.sqrt(num / df) : null;
+}
 
 function stats(el) {
   const kept = [], all = [];
   for (const c of S.cycles) {
-    const v = c.t[el.id];
-    if (v == null || !isFinite(v)) continue;
-    all.push({ cy: c.id, v, off: !!c.x[el.id] });
-    if (!c.x[el.id]) kept.push(v);
+    const vals = valsOf(c, el.id), off = offOf(c, el.id);
+    vals.forEach((v, occ) => {
+      if (v == null || !isFinite(v)) return;
+      const o = off.includes(occ);
+      all.push({ cy: c.id, occ, v, off: o, model: c.model });
+      if (!o) kept.push({ v, occ, model: c.model });
+    });
   }
-  const n = kept.length, sum = kept.reduce((a, b) => a + b, 0), sumsq = kept.reduce((a, b) => a + b * b, 0);
+  const xs = kept.map((r) => r.v);
+  const n = xs.length, sum = xs.reduce((a, b) => a + b, 0), sumsq = xs.reduce((a, b) => a + b * b, 0);
   const mean = n ? sum / n : null;
   const sd = n > 1 ? Math.sqrt(Math.max(0, (sumsq - sum * sum / n) / (n - 1))) : null;
   const machine = el.type === 'machine';
@@ -578,18 +699,43 @@ function stats(el) {
   const allow = el.allow != null ? el.allow : (machine ? 0 : allowTotal());
   const normal = mean != null ? mean * rating / 100 : null;
   const std = normal != null ? normal * (1 + allow / 100) : null;
-  const perUnit = std != null ? std / (el.every || 1) : null;
-  const labor = perUnit != null ? perUnit * (el.crew || 1) : null;
+  const byModel = {};
+  let perUnit = null;
+  if (std != null) {
+    perUnit = 0;
+    for (const m of S.models) { byModel[m.id] = std * qtyOf(el, m.id) / (el.every || 1); perUnit += mixOf(m.id) * byModel[m.id]; }
+  }
+  const crew = el.crew || 1;
+  const labor = perUnit != null ? perUnit * crew : null;
   const z = Z[C().confidence] || 1.96, k = (+C().accuracy || 5) / 100;
   let need = null;
   if (n >= 2 && sum > 0) need = Math.ceil(Math.pow((z / k) * Math.sqrt(Math.max(0, n * sumsq - sum * sum)) / sum, 2));
-  return { all, n, mean, sd, cv: mean && sd != null ? sd / mean * 100 : null, rating, allow, normal, std, perUnit, labor, need, med: median(kept), machine };
+  // Same work? Compare models, and 1st vs 2nd time on a unit
+  let sameWork = null;
+  // flagged only when the gap is over 15% AND more than twice the normal spread inside the groups
+  const check = (groups, label) => {
+    if (groups.length < 2) return;
+    const sdIn = pooledSd(groups); if (sdIn == null) return;
+    const lo = groups.reduce((a, g) => (g.mean < a.mean ? g : a)), hi = groups.reduce((a, g) => (g.mean > a.mean ? g : a));
+    const d = lo.mean > 0 ? hi.mean / lo.mean - 1 : 0;
+    if (d > SAME_WORK && hi.mean - lo.mean > 2 * sdIn && (!sameWork || d > sameWork.d)) sameWork = { d, text: label(hi, lo, d) };
+  };
+  check(groupMeans(kept, 'model'), (hi, lo, d) => `${modelName(hi.k)} takes ${Math.round(d * 100)}% longer than ${modelName(lo.k)}`);
+  check(groupMeans(kept, 'occ'), (hi, lo, d) => `the ${ord(hi.k + 1)} time on a unit takes ${Math.round(d * 100)}% longer than the ${ord(lo.k + 1)}`);
+  const status = n === 0 ? 'none' : n < 2 ? 'prelim1' : need > n ? 'prelim' : 'final';
+  return { all, n, mean, sd, cv: mean && sd != null ? sd / mean * 100 : null, rating, allow, normal, std, byModel, perUnit, labor, crew, need, med: median(xs), machine, sameWork, status };
 }
 function allStats() { const m = new Map(); for (const e of S.elements) m.set(e.id, stats(e)); return m; }
 function totals(st) {
   let total = 0, labor = 0, missing = 0;
-  for (const e of S.elements) { const s = st.get(e.id); if (s.perUnit == null) missing++; else { total += s.perUnit; labor += s.labor; } }
-  return { total, labor, missing };
+  const byModel = Object.fromEntries(S.models.map((m) => [m.id, { t: 0, labor: 0 }]));
+  for (const e of S.elements) {
+    const s = st.get(e.id);
+    if (s.perUnit == null) { missing++; continue; }
+    total += s.perUnit; labor += s.labor;
+    for (const m of S.models) { byModel[m.id].t += s.byModel[m.id]; byModel[m.id].labor += s.byModel[m.id] * s.crew; }
+  }
+  return { total, labor, missing, byModel };
 }
 function stationNames() {
   const out = [];
@@ -597,15 +743,36 @@ function stationNames() {
   return out;
 }
 const stLabel = (name) => name || '(no station)';
-function groups(st, assign) {
+// Station groups. mid = a model id, or '' for the weighted average
+function groups(st, assign, mid) {
   const names = assign ? [...new Set(S.elements.map((e) => assign[e.id]))] : stationNames();
+  const val = (s) => (mid ? (s.byModel[mid] ?? null) : s.perUnit);
   return names.map((name) => {
     const els = S.elements.filter((e) => (assign ? assign[e.id] : e.station) === name);
-    let t = 0, labor = 0, crew = 0;
-    for (const e of els) { const s = st.get(e.id); t += s.perUnit || 0; labor += s.labor || 0; crew = Math.max(crew, e.crew || 1); }
-    return { name, els, t, labor, crew };
+    let t = 0, labor = 0;
+    const byModel = Object.fromEntries(S.models.map((m) => [m.id, 0]));
+    for (const e of els) {
+      const s = st.get(e.id), v = val(s) || 0;
+      t += v; labor += v * s.crew;
+      for (const m of S.models) byModel[m.id] += s.byModel[m.id] || 0;
+    }
+    return { name, els, t, labor, byModel };
   });
 }
+// The written reason behind a process's rating: its own, or the default rating's
+function ratingReason(e) {
+  if (e.type === 'machine') return { text: 'Machine-paced', own: false, missing: false };
+  const own = e.rating != null, text = String((own ? e.ratingNote : C().ratingNote) || '').trim();
+  const rating = own ? e.rating : defRating();
+  return { text, own, missing: rating !== 100 && !text };
+}
+function statusTag(s) {
+  if (s.status === 'none') return '<span class="tag bad">Not timed</span>';
+  if (s.status === 'prelim1') return '<span class="tag warn">Preliminary · only 1</span>';
+  if (s.status === 'prelim') return `<span class="tag warn">Preliminary · need ${s.need - s.n} more</span>`;
+  return '<span class="tag ok">Final</span>';
+}
+const statusText = (s) => (s.status === 'none' ? 'Not timed' : s.status === 'prelim1' ? 'Preliminary (only 1 observation)' : s.status === 'prelim' ? `Preliminary (need ${s.need - s.n} more)` : 'Final');
 
 /* ---------------- Tabs ---------------- */
 function showTab(t) {
@@ -624,12 +791,13 @@ function renderAll() {
   if (tab === 'proc') renderProc();
   if (tab === 'results') renderResults();
   if (tab === 'balance') renderBalance();
+  if (tab === 'delays') renderDelays();
   if (tab === 'files') renderFiles();
 }
 function renderHeader() {
   const s = S.study;
   const bits = [s.name || 'Untitled study', s.cell, s.part, s.date].filter(Boolean);
-  $('#studyLabel').textContent = `${bits.join(' · ')} · ${S.elements.length} processes · ${S.cycles.length} observation columns`;
+  $('#studyLabel').textContent = `${bits.join(' · ')} · ${S.models.length} model${S.models.length > 1 ? 's' : ''} · ${S.elements.length} processes · ${S.cycles.length} units observed`;
   $('#printTitle').textContent = bits.join(' · ');
   document.title = s.name ? `${s.name} · Time Study` : 'Time Study Balancer';
 }
@@ -650,7 +818,7 @@ function kpi(v, label, cls = '') { return `<div class="kpi ${cls}"><b>${esc(v)}<
 function getPath(p) { return p.split('.').reduce((o, k) => (o ? o[k] : undefined), S); }
 function setPath(p, v) { const ks = p.split('.'), last = ks.pop(); const o = ks.reduce((a, k) => a[k], S); o[last] = v; }
 function renderSetup() {
-  for (const inp of $$('[data-k]')) {
+  for (const inp of $$('#tab-setup [data-k]')) {
     const v = getPath(inp.dataset.k);
     if (document.activeElement !== inp) inp.value = v == null ? '' : v;
   }
@@ -659,19 +827,25 @@ function renderSetup() {
     wb.innerHTML = Object.entries(WH).map(([k, g]) => `<label class="field"><span>${g.label}</span><select data-wh="${k}">${g.opts.map(([n, v]) => `<option value="${esc(n)}">${esc(n)} (${v > 0 ? '+' : ''}${v.toFixed(2)})</option>`).join('')}</select></label>`).join('');
   }
   for (const sel of $$('[data-wh]')) sel.value = C().wh[sel.dataset.wh];
+  renderModels();
   renderDerived();
+}
+function renderModels() {
+  const tb = $('#modelTable'), tot = totalDemand();
+  tb.innerHTML = `<thead><tr><th>Model</th><th class="n">Units needed per ${periodName()}</th><th class="n">Mix</th><th class="n">Units observed</th><th></th></tr></thead><tbody>${S.models.map((m) => `
+    <tr data-m="${esc(m.id)}">
+      <td><input type="text" data-mf="name" value="${esc(m.name)}" aria-label="Model name" style="min-width:160px"></td>
+      <td class="n"><input type="number" min="0" step="any" data-mf="demand" value="${m.demand ?? ''}" aria-label="Units needed of ${esc(m.name)}" style="width:110px"></td>
+      <td class="n" data-mix="${esc(m.id)}">${tot > 0 ? fmt(mixOf(m.id) * 100, 0) + '%' : '—'}</td>
+      <td class="n">${S.cycles.filter((c) => c.model === m.id).length}</td>
+      <td><button class="btn sm danger" type="button" data-delm="${esc(m.id)}" aria-label="Remove ${esc(m.name)}"${S.models.length < 2 ? ' disabled' : ''}>✕</button></td>
+    </tr>`).join('')}
+    <tr class="total"><td>All models</td><td class="n" id="demTotal">${fmt(tot, 0)}</td><td class="n">${tot > 0 ? '100%' : ''}</td><td class="n">${S.cycles.length}</td><td></td></tr></tbody>`;
 }
 function whRating() {
   let sum = 0;
   for (const [k, g] of Object.entries(WH)) { const o = g.opts.find((x) => x[0] === C().wh[k]); sum += o ? o[1] : 0; }
   return Math.round(100 * (1 + sum) * 10) / 10;
-}
-// The written reason behind a process's rating: its own, or the default rating's
-function ratingReason(e) {
-  if (e.type === 'machine') return { text: 'Machine-paced', own: false, missing: false };
-  const own = e.rating != null, text = String((own ? e.ratingNote : C().ratingNote) || '').trim();
-  const rating = own ? e.rating : defRating();
-  return { text, own, missing: rating !== 100 && !text };
 }
 function whText() {
   const parts = Object.entries(WH).map(([k, g]) => { const o = g.opts.find((x) => x[0] === C().wh[k]) || ['D Average', 0]; return `${g.label.toLowerCase()} ${o[0]} (${o[1] > 0 ? '+' : ''}${o[1].toFixed(2)})`; });
@@ -679,12 +853,14 @@ function whText() {
 }
 function renderDerived() {
   $('#ratingWarn').hidden = !(defRating() !== 100 && !String(C().ratingNote || '').trim());
-  const t = takt(), a = availSec();
+  const t = takt(), a = availSec(), tot = totalDemand();
   $('#taktOut').textContent = t
-    ? `Takt time: ${fmtT(t, 2)} per unit  (${fmt(a / 3600, 1)} h available per ${periodName()} ÷ ${fmt(+S.demand.units, 0)} units)`
-    : 'Takt time: enter units needed and shift time';
+    ? `Takt time: ${fmtT(t, 2)} per unit  (${fmt(a / 3600, 1)} h available per ${periodName()} ÷ ${fmt(tot, 0)} units, all models)`
+    : 'Takt time: enter units needed for at least one model, and the shift time';
   $('#allowOut').textContent = `Total allowance: ${fmt(allowTotal())}%`;
   $('#whOut').textContent = `Westinghouse rating: ${fmt(whRating())}%`;
+  for (const m of S.models) { const c = $(`[data-mix="${CSS.escape(m.id)}"]`); if (c) c.textContent = tot > 0 ? fmt(mixOf(m.id) * 100, 0) + '%' : '—'; }
+  const dt = $('#demTotal'); if (dt) dt.textContent = fmt(tot, 0);
   const b = S.baseline;
   $('#baselineNag').hidden = b.before != null && String(b.metric || '').trim() !== '';
   if (b.before != null && b.after != null && b.before !== 0) {
@@ -700,18 +876,44 @@ function onSetupEdit(e) {
     setPath(k, e.target.hasAttribute('data-num') ? numOrNull(e.target.value) : e.target.value);
     persist(); renderDerived();
     if (k === 'constants.unit') renderAll();
+    if (k === 'demand.per') renderModels();
     return;
   }
-  if (e.target.dataset.wh) { C().wh[e.target.dataset.wh] = e.target.value; persist(); renderDerived(); }
+  if (e.target.dataset.wh) { C().wh[e.target.dataset.wh] = e.target.value; persist(); renderDerived(); return; }
+  const mf = e.target.dataset.mf;
+  if (mf) {
+    const m = modelById(e.target.closest('tr').dataset.m); if (!m) return;
+    if (mf === 'name') m.name = e.target.value.trim() || m.name;
+    if (mf === 'demand') { const v = numOrNull(e.target.value); m.demand = v != null && v >= 0 ? v : null; }
+    persist(); renderDerived();
+  }
 }
 $('#tab-setup').addEventListener('input', onSetupEdit);
-$('#tab-setup').addEventListener('change', (e) => { if (e.target.tagName === 'SELECT') onSetupEdit(e); });
+$('#tab-setup').addEventListener('change', (e) => { if (e.target.tagName === 'SELECT' || e.target.dataset.mf === 'name') onSetupEdit(e); });
 $('#whUse').addEventListener('click', () => {
   C().rating = whRating();
   const note = String(C().ratingNote || '').trim();
   if (!note || /^Westinghouse:/.test(note)) C().ratingNote = whText() + ' Reason: ';
   persist(); renderSetup(); toast(`Default rating set to ${fmt(C().rating)}%. Add why after “Reason:”.`);
   const ta = document.querySelector('[data-k="constants.ratingNote"]'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+});
+$('#addModel').addEventListener('click', () => {
+  S.models.push({ id: newId('m'), name: `Model ${S.models.length + 1}`, demand: null });
+  persist(); renderModels(); renderDerived();
+  const ins = $$('#modelTable input[data-mf="name"]'); ins[ins.length - 1]?.select();
+});
+$('#modelTable').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-delm]'); if (!b || S.models.length < 2) return;
+  const m = modelById(b.dataset.delm); if (!m) return;
+  const used = S.cycles.filter((c) => c.model === m.id).length;
+  const go = () => {
+    S.models = S.models.filter((x) => x !== m);
+    for (const c of S.cycles) if (c.model === m.id) c.model = S.models[0].id;
+    for (const el of S.elements) if (el.qty) delete el.qty[m.id];
+    if (BAL_VIEW === m.id) BAL_VIEW = '';
+    persist(); renderModels(); renderDerived();
+  };
+  if (used) ask(`Remove ${m.name}? Its ${used} observed unit${used > 1 ? 's' : ''} will be moved to ${S.models.find((x) => x !== m).name}.`, 'Remove model', go); else go();
 });
 
 /* ---------------- Processes table ---------------- */
@@ -725,13 +927,14 @@ function stationOptions(sel) {
   if (sel !== '*' && !names.includes(sel)) F.station = sel = '*';
   return `<option value="*">All stations</option>${names.map((n) => `<option value="${esc(n)}"${n === sel ? ' selected' : ''}>${esc(stLabel(n))}</option>`).join('')}`;
 }
-function refreshStationLists() {
+function refreshLists() {
   $('#stationNames').innerHTML = stationNames().filter(Boolean).map((n) => `<option value="${esc(n)}">`).join('');
+  $('#serialNames').innerHTML = [...new Set(S.cycles.map((c) => c.label).filter(Boolean))].map((n) => `<option value="${esc(n)}">`).join('');
   $('#fStation').innerHTML = stationOptions(F.station);
   $('#rStation').innerHTML = stationOptions(F.station);
 }
 function renderProc() {
-  refreshStationLists();
+  refreshLists();
   $('#fSearch').value = F.q;
   const locked = T.on;
   $('#addProc').disabled = locked; $('#addObs').disabled = locked;
@@ -739,9 +942,12 @@ function renderProc() {
   const vis = visibleEls();
   $('#procCount').textContent = `${S.elements.length} processes${vis.length !== S.elements.length ? `, ${vis.length} shown` : ''}`;
   const tb = $('#procTable');
-  const head = `<tr><th>#</th><th>Station</th><th>Process</th><th>Type</th><th class="n">Crew</th><th class="n" title="1 = every unit. 4 = once per 4 units">Every … units</th><th>Comes after</th>${S.cycles.map((c, i) => `<th><div class="obsh"><input class="w-lab" data-lab="${esc(c.id)}" value="${esc(c.label)}" placeholder="Obs ${i + 1}" aria-label="Label for observation ${i + 1}, such as a serial number"${locked ? ' disabled' : ''}><button class="btn sm danger" type="button" data-delcy="${esc(c.id)}" aria-label="Delete observation column ${i + 1}"${locked ? ' disabled' : ''}>✕</button></div></th>`).join('')}<th></th></tr>`;
+  const nm = S.models.length, cols = 8 + nm + S.cycles.length;
+  const short = (n) => (n.length > 10 ? n.slice(0, 9) + '…' : n);
+  const head1 = `<tr><th>#</th><th>Station</th><th>Process</th><th>Type</th><th class="n">Crew</th>${S.models.map((m) => `<th class="n qh" title="Times done per unit of ${esc(m.name)}">Qty<br>${esc(short(m.name))}</th>`).join('')}<th class="n" title="Only for occasional work: 4 = once every 4 units">Every</th><th>Comes after</th>${S.cycles.map((c, i) => `<th><div class="obsh"><div class="row"><input class="w-lab" data-lab="${esc(c.id)}" value="${esc(c.label)}" placeholder="Obs ${i + 1}" aria-label="Serial number for observation ${i + 1}"${locked ? ' disabled' : ''}><button class="btn sm danger" type="button" data-delcy="${esc(c.id)}" aria-label="Delete observation column ${i + 1}"${locked ? ' disabled' : ''}>✕</button></div><select class="w-mod" data-cmod="${esc(c.id)}" aria-label="Model of observation ${i + 1}"${locked ? ' disabled' : ''}>${S.models.map((m) => `<option value="${esc(m.id)}"${m.id === c.model ? ' selected' : ''}>${esc(m.name)}</option>`).join('')}</select></div></th>`).join('')}<th></th></tr>`;
+  const head2 = '';
   if (!S.elements.length) {
-    tb.innerHTML = `<thead>${head}</thead><tbody><tr><td colspan="${8 + S.cycles.length}" class="note">No processes yet. Press “+ Add process”, paste rows from Excel below, or load a sample at the top.</td></tr></tbody>`;
+    tb.innerHTML = `<thead>${head1}${head2}</thead><tbody><tr><td colspan="${cols}" class="note">No processes yet. Press “+ Add process”, paste rows from Excel below, or load a sample at the top.</td></tr></tbody>`;
     return;
   }
   const rows = vis.map((el) => {
@@ -752,16 +958,17 @@ function renderProc() {
       <td><input class="w-name" data-f="name" value="${esc(el.name)}" placeholder="What is done" aria-label="Process ${i + 1} name"></td>
       <td><select class="w-type" data-f="type" aria-label="Type of process ${i + 1}">${Object.entries(TYPES).map(([k, v]) => `<option value="${k}"${el.type === k ? ' selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><input class="w-num" type="number" min="1" step="1" data-f="crew" value="${el.crew}" aria-label="Crew for process ${i + 1}"></td>
+      ${S.models.map((m) => `<td><input class="w-qty" type="number" min="0" step="1" data-q="${esc(m.id)}" value="${qtyOf(el, m.id)}" aria-label="How many times process ${i + 1} is done on ${esc(m.name)}"></td>`).join('')}
       <td><input class="w-num" type="number" min="1" step="any" data-f="every" value="${el.every}" aria-label="Once every how many units, process ${i + 1}"></td>
       <td><input class="w-after" data-f="after" value="${esc(afterText(el))}" placeholder="—" inputmode="numeric" aria-label="Process ${i + 1} comes after"></td>
-      ${S.cycles.map((c, ci) => `<td><input class="w-obs${c.x[el.id] ? ' off' : ''}" data-cy="${esc(c.id)}" value="${inVal(c.t[el.id])}" inputmode="decimal" aria-label="${esc(obsLabel(c, ci))}, process ${i + 1}"${locked && c.id === T.cy ? ' disabled' : ''}></td>`).join('')}
+      ${S.cycles.map((c, ci) => { const txt = cellText(c, el.id), off = offOf(c, el.id).length; return `<td><input class="w-obs${off ? ' off' : ''}" data-cy="${esc(c.id)}" value="${esc(txt)}" inputmode="decimal" aria-label="${esc(obsLabel(c, ci))}, process ${i + 1}"${locked && c.id === T.cy ? ' disabled' : ''}${qtyOf(el, c.model) === 0 && !txt ? ' placeholder="n/a"' : ''}></td>`; }).join('')}
       <td class="tools">
         <button class="btn" type="button" data-act="up" aria-label="Move process ${i + 1} up"${locked || i === 0 ? ' disabled' : ''}>↑</button>
         <button class="btn" type="button" data-act="down" aria-label="Move process ${i + 1} down"${locked || i === S.elements.length - 1 ? ' disabled' : ''}>↓</button>
         <button class="btn danger" type="button" data-act="del" aria-label="Delete process ${i + 1}"${locked ? ' disabled' : ''}>✕</button>
       </td></tr>`;
   }).join('');
-  tb.innerHTML = `<thead>${head}</thead><tbody>${rows || `<tr><td colspan="${8 + S.cycles.length}" class="note">No processes match.</td></tr>`}</tbody>`;
+  tb.innerHTML = `<thead>${head1}${head2}</thead><tbody>${rows || `<tr><td colspan="${cols}" class="note">No processes match.</td></tr>`}</tbody>`;
 }
 $('#fStation').addEventListener('change', (e) => { F.station = e.target.value; renderProc(); });
 $('#rStation').addEventListener('change', (e) => { F.station = e.target.value; renderResults(); });
@@ -770,7 +977,7 @@ $('#addProc').addEventListener('click', () => {
   if (T.on) return;
   const prev = S.elements[S.elements.length - 1];
   const station = F.station !== '*' ? F.station : prev ? prev.station : '';
-  S.elements.push({ id: newId('e'), station, name: '', type: 'manual', crew: 1, every: 1, after: prev ? [prev.id] : [], rating: null, allow: null });
+  S.elements.push({ id: newId('e'), station, name: '', type: 'manual', crew: 1, every: 1, after: prev ? [prev.id] : [], rating: null, ratingNote: '', allow: null, qty: {} });
   F.q = '';
   persist(); renderProc(); renderHeader();
   const inputs = $$('#procTable input[data-f="name"]'); inputs[inputs.length - 1]?.focus();
@@ -778,26 +985,29 @@ $('#addProc').addEventListener('click', () => {
 $('#addObs').addEventListener('click', () => {
   if (T.on) return;
   if (!S.elements.length) { toast('Add the processes first.'); return; }
-  S.cycles.push({ id: newId('c'), label: '', when: new Date().toISOString(), t: {}, x: {} });
+  const last = S.cycles[S.cycles.length - 1];
+  S.cycles.push({ id: newId('c'), label: '', model: last ? last.model : S.models[0].id, when: new Date().toISOString(), t: {}, x: {} });
   persist(); renderProc(); renderHeader();
   $$('#procTable .w-lab').pop()?.focus();
 });
 $('#procTable').addEventListener('change', (e) => {
   const t = e.target;
-  if (t.dataset.lab) { const c = S.cycles.find((x) => x.id === t.dataset.lab); if (c) { c.label = t.value.trim(); persist(); } return; }
+  if (t.dataset.lab) { const c = S.cycles.find((x) => x.id === t.dataset.lab); if (c) { c.label = t.value.trim(); persist(); refreshLists(); } return; }
+  if (t.dataset.cmod) { const c = S.cycles.find((x) => x.id === t.dataset.cmod); if (c) { c.model = t.value; persist(); renderProc(); } return; }
   const row = t.closest('tr[data-id]'); if (!row) return;
   const el = elById(row.dataset.id); if (!el) return;
   if (t.dataset.cy) {
     const c = S.cycles.find((x) => x.id === t.dataset.cy); if (!c) return;
-    const v = parseTime(t.value);
-    if (v == null) { delete c.t[el.id]; delete c.x[el.id]; }
-    else if (isNaN(v)) { toast(`“${t.value}” isn’t a time. Type a number in ${U().name}, or h:mm:ss.`); t.value = inVal(c.t[el.id]); return; }
-    else { c.t[el.id] = Math.round(v * 100) / 100; }
-    t.value = inVal(c.t[el.id]);
+    const r = parseCell(t.value);
+    if (!r) { toast(`“${t.value}” isn’t a time. Type a number in ${U().name} (or h:mm:ss). Separate two times with a semicolon.`); t.value = cellText(c, el.id); return; }
+    if (r.vals.length) { c.t[el.id] = r.vals; if (r.off.length) c.x[el.id] = r.off; else delete c.x[el.id]; } else { delete c.t[el.id]; delete c.x[el.id]; }
+    t.value = cellText(c, el.id); t.classList.toggle('off', r.off.length > 0);
+    if (r.vals.length > 1 && qtyOf(el, c.model) < r.vals.length) toast(`${r.vals.length} times recorded, but the Qty for ${modelName(c.model)} is ${qtyOf(el, c.model)}. Check the Qty column.`);
     persist(); return;
   }
+  if (t.dataset.q) { const v = parseFloat(t.value); el.qty = el.qty || {}; el.qty[t.dataset.q] = v >= 0 ? Math.round(v * 100) / 100 : 1; t.value = el.qty[t.dataset.q]; persist(); return; }
   const f = t.dataset.f;
-  if (f === 'station') { el.station = t.value.trim(); refreshStationLists(); }
+  if (f === 'station') { el.station = t.value.trim(); refreshLists(); }
   if (f === 'name') el.name = t.value.trim();
   if (f === 'type') el.type = t.value;
   if (f === 'crew') { const v = parseFloat(t.value); el.crew = v > 0 ? v : 1; t.value = el.crew; }
@@ -826,7 +1036,7 @@ $('#procTable').addEventListener('click', (e) => {
   if (b.dataset.act === 'up' && i > 0) [S.elements[i - 1], S.elements[i]] = [S.elements[i], S.elements[i - 1]];
   if (b.dataset.act === 'down' && i < S.elements.length - 1) [S.elements[i + 1], S.elements[i]] = [S.elements[i], S.elements[i + 1]];
   if (b.dataset.act === 'del') {
-    const has = S.cycles.some((c) => c.t[el.id] != null);
+    const has = S.cycles.some((c) => c.t[el.id]);
     const go = () => {
       S.elements = S.elements.filter((x) => x !== el);
       for (const x of S.elements) x.after = x.after.filter((id) => id !== el.id);
@@ -845,19 +1055,30 @@ const HEAD = [
   ['name', /^(process|step|operation|task|description|element|activity)( ?(name|description))?$/i],
   ['type', /^(type|kind)$/i],
   ['crew', /^(crew|crew size|people|operators|persons|headcount|manpower)$/i],
-  ['every', /^(every|every n units|frequency|freq)$/i],
+  ['every', /^(every|every n units|once every n units|frequency|freq)$/i],
   ['after', /^(comes after|after|predecessors?|precedence)$/i],
-  ['skip', /^(#|no\.?|seq|item|line)$/i],
+  ['rating', /^(own )?rating( %)?$/i],
+  ['ratingNote', /^rating reason$/i],
+  ['allow', /^(own )?allowance( %)?$/i],
+  ['skip', /^(#|no\.?|seq|item|line|model|status)$/i],
 ];
-const SKIP_HEAD = /^(average|avg|mean|normal|standard|std|rating|allowance|per unit|labor|kept|spread|cv|readings needed|enough)/i;
+const SKIP_HEAD = /^(average|avg|mean|normal|standard|std|rating|allowance|per unit|labor|kept|spread|cv|readings needed|observations needed|enough|weighted|time per unit|same work)/i;
+const QTY_HEAD = /^qty\s*[:\-]?\s*(.+)$/i;
+const OBS_HEAD = /^(.*?)\s*\[(.+)\]\s*$/;
 function parseType(s) { s = String(s || '').toLowerCase(); return /mach|auto|oven|cure|test ?rig|robot/.test(s) ? 'machine' : /walk|move|handl|crane|transport|get|fetch|forklift/.test(s) ? 'walk' : 'manual'; }
+function modelByName(name, create) {
+  const n = String(name || '').trim(); if (!n) return null;
+  let m = S.models.find((x) => x.name.toLowerCase() === n.toLowerCase());
+  if (!m && create) { m = { id: newId('m'), name: n, demand: null }; S.models.push(m); }
+  return m;
+}
 $('#pasteGo').addEventListener('click', () => pasteRun(false));
 function pasteRun(confirmed) {
   if (T.on) { toast('Stop the stopwatch first.'); return; }
   const text = $('#pasteText').value.replace(/^﻿/, '');
-  let lines = text.split(/\r?\n/).filter((l) => l.trim());
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (!lines.length) { toast('Paste some rows first.'); return; }
-  const delim = lines[0].includes('\t') ? '\t' : lines[0].includes(';') ? ';' : ',';
+  const delim = lines[0].includes('\t') ? '\t' : lines[0].includes(';') && !lines[0].includes(',') ? ';' : ',';
   const split = (l) => {
     if (delim === '\t') return l.split('\t').map((x) => x.trim());
     const out = []; let cur = '', q = false;
@@ -866,22 +1087,26 @@ function pasteRun(confirmed) {
   };
   let rows = lines.map(split);
   const first = rows[0];
-  const map = first.map((h) => { for (const [f, re] of HEAD) if (re.test(h)) return f; return SKIP_HEAD.test(h) ? 'skip' : null; });
+  const map = first.map((h) => { for (const [f, re] of HEAD) if (re.test(h)) return f; if (QTY_HEAD.test(h)) return 'qty'; return SKIP_HEAD.test(h) ? 'skip' : null; });
   const header = map.includes('name');
   let cols;
   if (header) { cols = map.map((m, i) => m || (first[i] ? 'obs' : 'skip')); rows = rows.slice(1); }
   else if (first.length === 1) cols = ['name'];
   else cols = first.map((_, i) => (i === 0 ? 'station' : i === 1 ? 'name' : 'obs'));
-  const obsIdx = cols.map((c, i) => (c === 'obs' ? i : -1)).filter((i) => i >= 0);
   const replace = $('#pasteReplace').checked;
   if (replace && S.elements.length && !confirmed) { ask(`Replace all ${S.elements.length} current processes and their times?`, 'Replace', () => pasteRun(true)); return; }
   if (replace) { S.elements = []; S.cycles = []; }
-  // one observation column per pasted time column; reuse existing columns in order when adding
+  const qtyCols = cols.map((c, i) => (c === 'qty' ? { i, m: modelByName(first[i].match(QTY_HEAD)[1], true) } : null)).filter(Boolean);
+  const obsIdx = cols.map((c, i) => (c === 'obs' ? i : -1)).filter((i) => i >= 0);
   const obsCols = obsIdx.map((ci, k) => {
-    const label = header ? first[ci] : '';
+    let label = header ? first[ci] : '', model = null;
+    const mm = header && label.match(OBS_HEAD);
+    if (mm) { label = mm[1].trim(); model = modelByName(mm[2], true); }
+    if (/^obs\s*\d+$/i.test(label)) label = '';
     let c = !replace && label ? S.cycles.find((x) => x.label === label) : null;
     if (!c && !replace && !label) c = S.cycles[k];
-    if (!c) { c = { id: newId('c'), label: /^obs\s*\d+$/i.test(label) ? '' : label, when: new Date().toISOString(), t: {}, x: {} }; S.cycles.push(c); }
+    if (!c) { c = { id: newId('c'), label, model: (model || S.models[0]).id, when: new Date().toISOString(), t: {}, x: {} }; S.cycles.push(c); }
+    else if (model) c.model = model.id;
     return c;
   });
   const base = S.elements.length;
@@ -892,8 +1117,14 @@ function pasteRun(confirmed) {
     const name = get('name');
     if (!name && !obsIdx.some((i) => r[i])) continue;
     const prev = added.length ? added[added.length - 1] : S.elements[base - 1];
-    const el = { id: newId('e'), station: get('station') || (cols.includes('station') ? '' : (prev ? prev.station : '')), name, type: cols.includes('type') ? parseType(get('type')) : 'manual', crew: +get('crew') > 0 ? +get('crew') : 1, every: +get('every') > 0 ? +get('every') : 1, after: prev ? [prev.id] : [], rating: null, allow: null };
-    obsIdx.forEach((ci, k) => { const raw = String(r[ci] || '').trim(), out = /\*$/.test(raw); const v = parseTime(raw.replace(/\*$/, '')); if (v == null) return; if (isNaN(v)) { bad++; return; } obsCols[k].t[el.id] = Math.round(v * 100) / 100; if (out) obsCols[k].x[el.id] = true; });
+    const el = { id: newId('e'), station: get('station') || (cols.includes('station') ? '' : (prev ? prev.station : '')), name, type: cols.includes('type') ? parseType(get('type')) : 'manual', crew: +get('crew') > 0 ? +get('crew') : 1, every: +get('every') > 0 ? +get('every') : 1, after: prev ? [prev.id] : [], rating: +get('rating') > 0 ? +get('rating') : null, ratingNote: get('ratingNote'), allow: get('allow') !== '' && +get('allow') >= 0 ? +get('allow') : null, qty: {} };
+    for (const q of qtyCols) { const v = parseFloat(r[q.i]); if (isFinite(v) && v >= 0) el.qty[q.m.id] = v; }
+    obsIdx.forEach((ci, k) => {
+      const res = parseCell(r[ci]);
+      if (!res) { bad++; return; }
+      if (!res.vals.length) return;
+      obsCols[k].t[el.id] = res.vals; if (res.off.length) obsCols[k].x[el.id] = res.off;
+    });
     added.push(el); afterRaw.push(cols.includes('after') ? get('after') : null);
   }
   added.forEach((el, i) => {
@@ -904,22 +1135,32 @@ function pasteRun(confirmed) {
   S.elements.push(...added);
   S.cycles = S.cycles.filter((c) => Object.keys(c.t).length || c.label || !obsCols.includes(c));
   persist(); F.station = '*'; F.q = ''; renderProc(); renderHeader();
-  toast(`Added ${added.length} process${added.length === 1 ? '' : 'es'} with ${obsIdx.length} observation column${obsIdx.length === 1 ? '' : 's'}.${bad ? ` ${bad} cells weren’t numbers and were skipped.` : ''}`);
+  toast(`Added ${added.length} process${added.length === 1 ? '' : 'es'} with ${obsIdx.length} observation column${obsIdx.length === 1 ? '' : 's'}${qtyCols.length ? ` and quantities for ${qtyCols.length} model${qtyCols.length > 1 ? 's' : ''}` : ''}.${bad ? ` ${bad} cells weren’t times and were skipped.` : ''}`);
   if (added.length) $('#pasteText').value = '';
 }
 
 /* ---------------- Stopwatch ---------------- */
-const T = { on: false, cy: null, seq: [], idx: 0, mark: 0, cycleStart: 0, hist: [], flag: false, int: 0, station: '*' };
+const T = { on: false, cy: null, seq: [], idx: 0, mark: 0, cycleStart: 0, hist: [], flag: false, int: 0, station: '*', model: null };
 let wakeLock = null;
 async function wake() { try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { wakeLock = null; } }
 function unwake() { try { wakeLock && wakeLock.release(); } catch (e) { /* ignore */ } wakeLock = null; }
 document.addEventListener('visibilitychange', () => { if (T.on && document.visibilityState === 'visible') wake(); });
 const curCycle = () => S.cycles.find((c) => c.id === T.cy);
-const curEl = () => elById(T.seq[T.idx]);
-function newCycle() { const c = { id: newId('c'), label: '', when: new Date().toISOString(), t: {}, x: {} }; S.cycles.push(c); return c; }
+const curStep = () => T.seq[T.idx];
+function newCycle() { const c = { id: newId('c'), label: '', model: T.model, when: new Date().toISOString(), t: {}, x: {} }; S.cycles.push(c); return c; }
+function buildSeq() {
+  const out = [];
+  for (const e of S.elements) {
+    if (T.station !== '*' && e.station !== T.station) continue;
+    const q = Math.max(0, Math.round(qtyOf(e, T.model)));
+    for (let k = 0; k < q; k++) out.push({ id: e.id, occ: k, of: q });
+  }
+  return out;
+}
 function tStart() {
-  T.seq = S.elements.filter((e) => T.station === '*' || e.station === T.station).map((e) => e.id);
-  if (!T.seq.length) { toast('Add processes first.'); return; }
+  if (!modelById(T.model)) T.model = S.models[0].id;
+  T.seq = buildSeq();
+  if (!T.seq.length) { toast(`No processes for ${modelName(T.model)}${T.station !== '*' ? ' at this station' : ''}.`); return; }
   const c = newCycle();
   Object.assign(T, { on: true, cy: c.id, idx: 0, mark: performance.now(), hist: [], flag: false });
   T.cycleStart = T.mark;
@@ -928,10 +1169,15 @@ function tStart() {
 }
 function tNext(skip) {
   if (!T.on) return;
-  const now = performance.now(), c = curCycle(), el = curEl();
-  if (!c || !el) { tStop(); return; }
-  T.hist.push({ cy: c.id, el: el.id, idx: T.idx, prevMark: T.mark, skipped: !!skip });
-  if (!skip) { c.t[el.id] = Math.round((now - T.mark) / 10) / 100; if (T.flag) c.x[el.id] = true; T.mark = now; }
+  const now = performance.now(), c = curCycle(), st = curStep();
+  if (!c || !st) { tStop(); return; }
+  T.hist.push({ cy: c.id, el: st.id, idx: T.idx, prevMark: T.mark, pushed: !skip });
+  if (!skip) {
+    const arr = c.t[st.id] || (c.t[st.id] = []);
+    arr.push(Math.round((now - T.mark) / 10) / 100);
+    if (T.flag) (c.x[st.id] || (c.x[st.id] = [])).push(arr.length - 1);
+    T.mark = now;
+  }
   T.flag = false; T.idx++;
   if (T.idx >= T.seq.length) {
     const n = newCycle();
@@ -951,7 +1197,12 @@ function tUndo() {
     if (!h) { T.idx = T.seq.length - 1; renderTimer(); return; }
   }
   const c = S.cycles.find((x) => x.id === h.cy);
-  if (c && !h.skipped) { delete c.t[h.el]; delete c.x[h.el]; T.mark = h.prevMark; }
+  if (c && h.pushed && c.t[h.el]) {
+    const arr = c.t[h.el]; arr.pop();
+    if (c.x[h.el]) { c.x[h.el] = c.x[h.el].filter((i) => i < arr.length); if (!c.x[h.el].length) delete c.x[h.el]; }
+    if (!arr.length) delete c.t[h.el];
+    T.mark = h.prevMark;
+  }
   T.cy = h.cy; T.idx = h.idx; T.flag = false;
   persist(); renderTimer();
 }
@@ -969,27 +1220,31 @@ function tickClock() {
 }
 function renderTimer() {
   const box = $('#timer');
+  if (!modelById(T.model)) T.model = S.models[0].id;
   if (!T.on) {
     const names = stationNames();
     box.innerHTML = `
-      <p>Press <b>Start</b> when the first process begins, then <b>Next</b> each time a process ends. The clock never stops between processes, so nothing is lost. Each run adds a new Obs column to the table above.</p>
+      <p>Pick the model, then press <b>Start</b> when the first process begins and <b>Next</b> each time a process ends. A process done twice on this model is asked for twice. Each run adds a new Obs column to the table above.</p>
       <p class="note">Keep the page open while timing. If the browser is closed, the process being timed is lost (times already recorded are kept). For processes that take hours, it is usually easier to note start and end clock times and type the durations into the table. Keys on a laptop: Space = Next, S = Skip, F = Flag, Backspace = Undo, Esc = Stop.</p>
-      <label class="field" style="max-width:260px"><span>Time the processes of</span><select id="swStation">${['*', ...names].map((n) => `<option value="${esc(n)}"${n === T.station ? ' selected' : ''}>${n === '*' ? 'All stations, in order' : esc(stLabel(n))}</option>`).join('')}</select></label>
+      <div class="row end">
+        <label class="field" style="width:200px"><span>Model</span><select id="swModel">${S.models.map((m) => `<option value="${esc(m.id)}"${m.id === T.model ? ' selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>
+        <label class="field" style="width:240px"><span>Time the processes of</span><select id="swStation">${['*', ...names].map((n) => `<option value="${esc(n)}"${n === T.station ? ' selected' : ''}>${n === '*' ? 'All stations, in order' : esc(stLabel(n))}</option>`).join('')}</select></label>
+      </div>
       <button class="btn primary bigbtn" id="tStart" type="button"${S.elements.length ? '' : ' disabled'}>Start timing</button>`;
     return;
   }
-  const el = curEl(), nx = elById(T.seq[T.idx + 1] || T.seq[0]);
+  const st = curStep(), el = elById(st.id), nxs = T.seq[T.idx + 1] || T.seq[0], nx = elById(nxs.id);
   const c = curCycle();
   box.innerHTML = `
-    <div class="row between"><h2>${esc(obsLabel(c, S.cycles.indexOf(c)))} · process ${T.idx + 1} of ${T.seq.length}</h2><span class="tag ${T.flag ? 'warn' : ''}">${T.flag ? 'This time will be flagged' : 'Timing'}</span></div>
-    <div class="prog">${T.seq.map((id, i) => `<span class="${i < T.idx ? (c.t[id] != null ? 'done' : 'skip') : i === T.idx ? 'cur' : ''}"></span>`).join('')}</div>
+    <div class="row between"><h2>${esc(obsLabel(c, S.cycles.indexOf(c)))} · ${esc(modelName(c.model))} · step ${T.idx + 1} of ${T.seq.length}</h2><span class="tag ${T.flag ? 'warn' : ''}">${T.flag ? 'This time will be flagged' : 'Timing'}</span></div>
+    <div class="prog">${T.seq.map((s, i) => `<span class="${i < T.idx ? ((c.t[s.id] || []).length > s.occ ? 'done' : 'skip') : i === T.idx ? 'cur' : ''}"></span>`).join('')}</div>
     <div class="now">
       <span class="label">Now timing</span>
-      <span class="el">${elNo(el.id)}. ${esc(el.name || '(unnamed)')}</span>
+      <span class="el">${elNo(el.id)}. ${esc(el.name || '(unnamed)')}${st.of > 1 ? ` <span class="muted">(${ord(st.occ + 1)} of ${st.of})</span>` : ''}</span>
       ${el.every > 1 ? `<span class="after">Happens once every ${fmt(el.every, 0)} units. Press Skip if it isn’t done this time.</span>` : ''}
-      <span class="after">Next: ${T.idx + 1 < T.seq.length ? '' : 'new run, '}${esc(nx ? nx.name : '')}</span>
+      <span class="after">Next: ${T.idx + 1 < T.seq.length ? '' : 'new unit, '}${esc(nx ? nx.name : '')}${nxs.of > 1 ? ` (${ord(nxs.occ + 1)})` : ''}</span>
     </div>
-    <div class="clocks"><div><b id="clkEl">0.0</b><span>this process</span></div><div><b id="clkCy">0.0</b><span>this run</span></div></div>
+    <div class="clocks"><div><b id="clkEl">0.0</b><span>this process</span></div><div><b id="clkCy">0.0</b><span>this unit</span></div></div>
     <button class="btn primary bigbtn" id="tNext" type="button">Next ▸</button>
     <div class="tbtns">
       <button class="btn" id="tSkip" type="button">Skip</button>
@@ -997,7 +1252,7 @@ function renderTimer() {
       <button class="btn" id="tUndo" type="button">Undo</button>
       <button class="btn danger" id="tStop" type="button">Stop</button>
     </div>
-    <p class="note"><b>Flag</b> if something unusual happens (jam, wrong part, waiting for a crane). The time is kept but left out of the averages.</p>`;
+    <p class="note"><b>Flag</b> if something unusual happens (jam, wrong part, waiting for a crane). The time is kept but left out of the averages. Log the lost time on the Delays tab.</p>`;
   tickClock();
 }
 $('#timer').addEventListener('click', (e) => {
@@ -1009,7 +1264,7 @@ $('#timer').addEventListener('click', (e) => {
   if (id === 'tUndo') tUndo();
   if (id === 'tStop') tStop();
 });
-$('#timer').addEventListener('change', (e) => { if (e.target.id === 'swStation') T.station = e.target.value; });
+$('#timer').addEventListener('change', (e) => { if (e.target.id === 'swStation') T.station = e.target.value; if (e.target.id === 'swModel') T.model = e.target.value; });
 $('#swBox').addEventListener('toggle', () => { if ($('#swBox').open) renderTimer(); });
 document.addEventListener('keydown', (e) => {
   if (tab !== 'proc' || !$('#swBox').open) return;
@@ -1025,47 +1280,54 @@ document.addEventListener('keydown', (e) => {
 
 /* ---------------- Results ---------------- */
 function renderResults() {
-  refreshStationLists();
-  const st = allStats(), { total, labor, missing } = totals(st), tk = takt();
-  const minOps = tk && labor > 0 ? Math.ceil(labor / tk - 1e-9) : null;
-  let short = 0, single = 0;
-  for (const e of S.elements) { const s = st.get(e.id); if (s.n === 1) single++; if (s.need != null && s.need > s.n) short++; }
+  refreshLists();
+  const st = allStats(), tt = totals(st), tk = takt();
+  const minOps = tk && tt.labor > 0 ? Math.ceil(tt.labor / tk - 1e-9) : null;
+  let prelim = 0, flagged = 0;
+  for (const e of S.elements) { const s = st.get(e.id); if (s.status !== 'final') prelim++; if (s.sameWork) flagged++; }
   const conf = `${C().confidence}% / ±${fmt(+C().accuracy, 0)}%`;
   $('#kpis').innerHTML = [
-    kpi(fmtT(total), `Standard time per unit, all processes added${missing ? ` (${missing} not timed)` : ''}`),
-    kpi(fmtT(labor), 'Labor per unit (× crew)'),
-    kpi(tk ? fmtT(tk) : '—', tk ? 'Takt time' : 'Takt time (enter demand on Setup)'),
+    kpi(fmtT(tt.total), `Weighted time per unit, all processes${tt.missing ? ` (${tt.missing} not timed)` : ''}`),
+    kpi(fmtT(tt.labor), 'Weighted labor per unit (× crew)'),
+    kpi(tk ? fmtT(tk) : '—', tk ? 'Takt time (all models)' : 'Takt time (enter demand on Setup)'),
     kpi(minOps ?? '—', 'Minimum operators to meet takt'),
-    kpi(short ? `${short}` : S.elements.length && !missing ? 'All' : '—', short ? `processes need more observations (${conf})` : `processes have enough observations (${conf})`, short ? 'bad' : 'good'),
+    kpi(prelim ? `${prelim}` : S.elements.length ? 'None' : '—', prelim ? `processes still preliminary (${conf})` : `preliminary processes (${conf})`, prelim ? 'bad' : 'good'),
   ].join('');
   const b = S.baseline, note = $('#resultsNote');
   note.hidden = false;
-  if (b.before == null) { note.className = 'callout warn'; note.textContent = 'No “before” number recorded yet. Add it on the Setup tab so you can show the change later.'; }
-  else { note.className = 'callout ok'; note.textContent = `Baseline: ${b.metric || 'value'} = ${fmt(b.before, 2)} ${b.unit || ''}${b.date ? ` (measured ${b.date})` : ''}${b.after != null ? `. After: ${fmt(b.after, 2)} ${b.unit || ''}.` : '.'}${single ? ` ${single} process${single > 1 ? 'es have' : ' has'} only one observation, so their spread is unknown.` : ''}`; }
-
+  const msgs = [];
+  let warn = false;
+  if (b.before == null) { warn = true; msgs.push('No “before” number recorded yet. Add it on the Setup tab so you can show the change later.'); }
+  else msgs.push(`Baseline: ${b.metric || 'value'} = ${fmt(b.before, 2)} ${b.unit || ''}${b.date ? ` (measured ${b.date})` : ''}${b.after != null ? `. After: ${fmt(b.after, 2)} ${b.unit || ''}` : ''}.`);
   const noReason = S.elements.filter((e) => ratingReason(e).missing).length;
-  if (noReason) { note.className = 'callout warn'; note.textContent += ` ${noReason} process${noReason > 1 ? 'es use' : ' uses'} a rating other than 100 with no written reason. Add it in the Rating reason column (or on Setup for the default rating).`; }
+  if (noReason) { warn = true; msgs.push(`${noReason} process${noReason > 1 ? 'es use' : ' uses'} a rating other than 100 with no written reason. Add it in the Rating reason column (or on Setup for the default rating).`); }
+  if (flagged) { warn = true; msgs.push(`${flagged} process${flagged > 1 ? 'es look' : ' looks'} like different work for different models or occurrences (marked “Same work?”). Consider splitting ${flagged > 1 ? 'them' : 'it'} into separate processes.`); }
+  note.className = `callout ${warn ? 'warn' : 'ok'}`; note.textContent = msgs.join(' ');
+
+  // by model
+  const gsW = groups(st);
+  $('#modelResTable').innerHTML = `<thead><tr><th>Model</th><th class="n">Demand / ${periodName()}</th><th class="n">Mix</th><th class="n">Time per unit</th><th class="n">Labor per unit</th><th>Slowest station</th><th class="n">vs takt</th></tr></thead><tbody>${S.models.map((m) => {
+    const t = tt.byModel[m.id], slow = gsW.reduce((a, g) => (!a || g.byModel[m.id] > a.byModel[m.id] ? g : a), null);
+    const over = tk && slow && slow.byModel[m.id] > tk + 1e-9;
+    return `<tr><td><b>${esc(m.name)}</b></td><td class="n">${fmt(+m.demand || 0, 0)}</td><td class="n">${totalDemand() > 0 ? fmt(mixOf(m.id) * 100, 0) + '%' : '—'}</td><td class="n">${fmtT(t.t)}</td><td class="n">${fmtT(t.labor)}</td><td>${slow ? `${esc(stLabel(slow.name))} · ${fmtT(slow.byModel[m.id])}` : '—'}</td><td class="n">${tk && slow ? `<span class="tag ${over ? 'bad' : 'ok'}">${fmt(slow.byModel[m.id] / tk * 100, 0)}%</span>` : '—'}</td></tr>`;
+  }).join('')}<tr class="total"><td>Weighted average (mix)</td><td class="n">${fmt(totalDemand(), 0)}</td><td class="n">${totalDemand() > 0 ? '100%' : ''}</td><td class="n">${fmtT(tt.total)}</td><td class="n">${fmtT(tt.labor)}</td><td></td><td></td></tr></tbody>`;
 
   if (!S.elements.length) { $('#resTable').innerHTML = '<tr><td class="note">No processes yet.</td></tr>'; return; }
-  const u = U().label;
-  const head = `<tr><th>#</th><th>Process</th><th>Observations (${u})</th><th class="n">Kept</th><th class="n">Average</th><th class="n">Spread</th><th class="n">Rating %</th><th>Rating reason</th><th class="n">Normal</th><th class="n">Allow %</th><th class="n">Standard</th><th class="n">Every</th><th class="n">Per unit</th><th class="n">Crew</th><th class="n">Labor</th><th>Enough?</th></tr>`;
+  const u = U().label, short = (n) => (n.length > 8 ? n.slice(0, 7) + '…' : n);
+  const head = `<tr><th>#</th><th>Process</th><th>Observations (${u})</th><th class="n">Kept</th><th class="n">Average</th><th class="n">Spread</th><th class="n">Rating %</th><th>Rating reason</th><th class="n">Normal</th><th class="n">Allow %</th><th class="n">Standard<br>per occurrence</th><th class="n">Qty ${S.models.map((m) => esc(short(m.name))).join(' / ')}</th><th class="n">Every</th><th class="n">Per unit<br>(weighted)</th><th class="n">Crew</th><th class="n">Labor</th><th>Status</th></tr>`;
   const row = (e) => {
     const s = st.get(e.id), i = elNo(e.id);
     const chips = s.all.map((r) => {
       const sus = !r.off && s.n >= 3 && s.med && Math.abs(r.v - s.med) / s.med > 0.3;
-      return `<button type="button" class="chip${r.off ? ' off' : ''}${sus ? ' sus' : ''}" data-cy="${esc(r.cy)}" data-el="${esc(e.id)}" title="${r.off ? 'Left out. Tap to use it again.' : 'Tap to leave this one out'}">${fmtU(r.v)}</button>`;
+      const c = S.cycles.find((x) => x.id === r.cy), lab = c ? obsLabel(c, S.cycles.indexOf(c)) : '';
+      return `<button type="button" class="chip${r.off ? ' off' : ''}${sus ? ' sus' : ''}" data-cy="${esc(r.cy)}" data-el="${esc(e.id)}" data-occ="${r.occ}" title="${esc(`${lab} · ${modelName(r.model)}${r.occ ? ` · ${ord(r.occ + 1)} time` : ''}`)}. ${r.off ? 'Left out. Tap to use it again.' : 'Tap to leave this one out.'}">${fmtU(r.v)}${r.occ ? `<sup>${r.occ + 1}</sup>` : ''}</button>`;
     }).join('') || '<span class="note">none yet</span>';
-    let enough;
-    if (s.n === 0) enough = '<span class="tag bad">Not timed</span>';
-    else if (s.n === 1) enough = '<span class="tag warn">Only 1</span>';
-    else if (s.need > s.n) enough = `<span class="tag warn">Need ${s.need - s.n} more</span>`;
-    else enough = '<span class="tag ok">Yes</span>';
     const rr = ratingReason(e);
     const reasonCell = s.machine ? '<span class="note">Machine-paced</span>'
       : `<input type="text" class="reason${rr.missing ? ' need' : ''}" data-f="ratingNote" value="${esc(e.ratingNote || '')}" placeholder="${esc(!rr.own && rr.text ? `Default: ${rr.text}` : rr.missing ? 'Why not 100?' : 'Optional')}" title="${esc(rr.text || (rr.missing ? 'Rating isn’t 100: write down why' : ''))}" aria-label="Reason for the rating of process ${i}">`;
     return `<tr data-el="${esc(e.id)}">
       <td class="mono">${i}</td>
-      <td><b>${esc(e.name || '(unnamed)')}</b><br><span class="note">${TYPES[e.type]}</span></td>
+      <td><b>${esc(e.name || '(unnamed)')}</b><br><span class="note">${TYPES[e.type]}</span>${s.sameWork ? `<span class="flagline" title="Different models or occurrences may be different work">Same work? ${esc(s.sameWork.text)}. Consider splitting.</span>` : ''}</td>
       <td><div class="chips">${chips}</div></td>
       <td class="n">${s.n}</td>
       <td class="n">${fmtU(s.mean, U().dp + 1)}</td>
@@ -1075,26 +1337,29 @@ function renderResults() {
       <td class="n">${fmtU(s.normal, U().dp + 1)}</td>
       <td class="n"><input type="number" min="0" step="any" data-f="allow" value="${e.allow ?? ''}" placeholder="${s.machine ? '0' : fmt(allowTotal(), 0)}" aria-label="Allowance for process ${i}"></td>
       <td class="n"><b>${fmtU(s.std, U().dp + 1)}</b></td>
+      <td class="n">${S.models.map((m) => fmt(qtyOf(e, m.id), qtyOf(e, m.id) % 1 ? 1 : 0)).join(' / ')}</td>
       <td class="n">${fmt(e.every, e.every % 1 ? 1 : 0)}</td>
       <td class="n"><b>${fmtU(s.perUnit, U().dp + 1)}</b></td>
       <td class="n">${fmt(e.crew, e.crew % 1 ? 1 : 0)}</td>
       <td class="n">${fmtU(s.labor, U().dp + 1)}</td>
-      <td>${enough}</td></tr>`;
+      <td>${statusTag(s)}</td></tr>`;
   };
   let body = '';
-  const gs = groups(st).filter((g) => F.station === '*' || g.name === F.station);
+  const gs = gsW.filter((g) => F.station === '*' || g.name === F.station);
   for (const g of gs) {
-    body += `<tr class="grp"><td colspan="16">${esc(stLabel(g.name))}</td></tr>`;
+    body += `<tr class="grp"><td colspan="17">${esc(stLabel(g.name))}</td></tr>`;
     body += g.els.map(row).join('');
-    body += `<tr class="sub"><td></td><td colspan="11">${esc(stLabel(g.name))} total</td><td class="n">${fmtU(g.t, U().dp + 1)}</td><td></td><td class="n">${fmtU(g.labor, U().dp + 1)}</td><td></td></tr>`;
+    body += `<tr class="sub"><td></td><td colspan="12">${esc(stLabel(g.name))} total (weighted)</td><td class="n">${fmtU(g.t, U().dp + 1)}</td><td></td><td class="n">${fmtU(g.labor, U().dp + 1)}</td><td></td></tr>`;
   }
-  if (F.station === '*') body += `<tr class="total"><td></td><td colspan="11">Whole unit</td><td class="n">${fmtU(total, U().dp + 1)}</td><td></td><td class="n">${fmtU(labor, U().dp + 1)}</td><td></td></tr>`;
+  if (F.station === '*') body += `<tr class="total"><td></td><td colspan="12">Whole unit (weighted)</td><td class="n">${fmtU(tt.total, U().dp + 1)}</td><td></td><td class="n">${fmtU(tt.labor, U().dp + 1)}</td><td></td></tr>`;
   $('#resTable').innerHTML = `<thead>${head}</thead><tbody>${body}</tbody>`;
 }
 $('#resTable').addEventListener('click', (e) => {
   const b = e.target.closest('.chip'); if (!b) return;
   const c = S.cycles.find((x) => x.id === b.dataset.cy); if (!c) return;
-  if (c.x[b.dataset.el]) delete c.x[b.dataset.el]; else c.x[b.dataset.el] = true;
+  const id = b.dataset.el, occ = +b.dataset.occ, cur = offOf(c, id);
+  const next = cur.includes(occ) ? cur.filter((i) => i !== occ) : [...cur, occ].sort((a, z) => a - z);
+  if (next.length) c.x[id] = next; else delete c.x[id];
   persist(); renderResults();
 });
 $('#resTable').addEventListener('change', (e) => {
@@ -1109,42 +1374,52 @@ $('#resTable').addEventListener('change', (e) => {
 
 /* ---------------- Balance ---------------- */
 let PROP = null;
-function balanceKpis(gs, total, tk) {
-  const n = gs.length, max = gs.reduce((a, g) => Math.max(a, g.t), 0);
-  const avail = availSec(), units = +S.demand.units;
+function balanceKpis(gs, tk, mid) {
+  const n = gs.length, max = gs.reduce((a, g) => Math.max(a, g.t), 0), total = gs.reduce((a, g) => a + g.t, 0);
+  const avail = availSec(), units = totalDemand();
   const out = max > 0 && avail ? avail / max : null;
   const eff = n && max ? total / (n * max) * 100 : null;
   const meets = out != null && units > 0 ? out >= units - 1e-9 : null;
   return [
     kpi(n, 'Stations'),
-    kpi(fmtT(max), 'Slowest station (bottleneck)', tk ? (max <= tk + 1e-9 ? 'good' : 'bad') : ''),
-    kpi(out ? fmt(out, out < 10 ? 1 : 0) : '—', `Units per ${periodName()} possible${units > 0 ? ` (need ${fmt(units, 0)})` : ''}`, meets == null ? '' : meets ? 'good' : 'bad'),
+    kpi(fmtT(max), `Slowest station${mid ? ` for ${modelName(mid)}` : ''}`, tk ? (max <= tk + 1e-9 ? 'good' : 'bad') : ''),
+    kpi(out ? fmt(out, out < 10 ? 1 : 0) : '—', `Units per ${periodName()} possible${mid ? ` if only ${modelName(mid)} ran` : ''}${units > 0 ? ` (need ${fmt(units, 0)})` : ''}`, meets == null ? '' : meets ? 'good' : 'bad'),
     kpi(eff ? fmt(eff, 0) + '%' : '—', 'Balance efficiency (100% = no waiting)'),
     kpi(fmtT(n * max - total), 'Waiting time per unit, all stations'),
   ].join('');
 }
 function renderBalance() {
-  const st = allStats(), tk = takt(), { total } = totals(st);
-  const gs = groups(st);
-  $('#balKpis').innerHTML = gs.length && S.elements.length ? balanceKpis(gs, total, tk) : '';
-  $('#chart').innerHTML = S.elements.length ? chartSvg(gs, st, tk, null) : '<p class="note">Add processes and their stations on the Processes tab.</p>';
+  const sel = $('#balView');
+  if (BAL_VIEW && !modelById(BAL_VIEW)) BAL_VIEW = '';
+  sel.innerHTML = `<option value="">Weighted average (your mix)</option>${S.models.map((m) => `<option value="${esc(m.id)}"${m.id === BAL_VIEW ? ' selected' : ''}>${esc(m.name)} only</option>`).join('')}`;
+  const st = allStats(), tk = takt();
+  const gs = groups(st, null, BAL_VIEW);
+  $('#chartTitle').textContent = `Work per station: ${BAL_VIEW ? modelName(BAL_VIEW) : 'weighted average'} (yamazumi)`;
+  $('#balKpis').innerHTML = gs.length && S.elements.length ? balanceKpis(gs, tk, BAL_VIEW) : '';
+  $('#chart').innerHTML = S.elements.length ? chartSvg(gs, st, tk, null, BAL_VIEW) : '<p class="note">Add processes and their stations on the Processes tab.</p>';
   const pos = new Map(gs.map((g, i) => [g.name, i]));
   const warn = [];
+  if (tk) for (const g of groups(st)) {
+    const over = S.models.filter((m) => (+m.demand > 0 || !totalDemand()) && g.byModel[m.id] > tk + 1e-9).sort((a, z) => g.byModel[z.id] - g.byModel[a.id]);
+    if (g.t > tk + 1e-9) warn.push(`${stLabel(g.name)} is over takt: weighted average ${fmtT(g.t)}${over.length ? `, worst ${over[0].name} at ${fmtT(g.byModel[over[0].id])}` : ''}, vs ${fmtT(tk)} takt. Move work out, cut waste, or add a parallel station.`);
+    else if (over.length) warn.push(`${over.map((m) => m.name).join(', ')} put${over.length > 1 ? '' : 's'} ${stLabel(g.name)} at ${fmtT(g.byModel[over[0].id])} vs ${fmtT(tk)} takt, even though the weighted average fits. When ${over.length > 1 ? 'these models' : 'it'} come${over.length > 1 ? '' : 's'} down the line, this station falls behind.`);
+  }
   for (const e of S.elements) for (const p of e.after) {
     const pe = elById(p); if (!pe) continue;
     if (pos.get(pe.station) > pos.get(e.station)) warn.push(`Process ${elNo(e.id)} is at ${stLabel(e.station)}, but it comes after process ${elNo(p)} at ${stLabel(pe.station)}, which is later in the line.`);
   }
-  for (const g of gs) if (tk && g.t > tk + 1e-9) warn.push(`${stLabel(g.name)} is over takt by ${fmtT(g.t - tk)}. Move work out, cut waste, or add a parallel station.`);
   const missing = S.elements.filter((e) => st.get(e.id).perUnit == null);
   if (missing.length) warn.push(`Not timed yet, counted as zero: process${missing.length > 1 ? 'es' : ''} ${missing.slice(0, 30).map((e) => elNo(e.id)).join(', ')}${missing.length > 30 ? '…' : ''}.`);
   $('#balWarn').hidden = !warn.length;
-  $('#balWarn').innerHTML = warn.slice(0, 12).map(esc).join('<br>') + (warn.length > 12 ? `<br>…and ${warn.length - 12} more.` : '');
-  $('#stTable').innerHTML = `<thead><tr><th>Station</th><th class="n">Processes</th><th class="n">Station time (${U().label})</th><th class="n">Labor (${U().label})</th><th class="n">vs takt</th></tr></thead><tbody>${gs.map((g) => `<tr><td>${esc(stLabel(g.name))}</td><td class="n">${g.els.length}</td><td class="n">${fmtU(g.t, U().dp + 1)}</td><td class="n">${fmtU(g.labor, U().dp + 1)}</td><td class="n">${tk ? `<span class="tag ${g.t > tk + 1e-9 ? 'bad' : 'ok'}">${fmt(g.t / tk * 100, 0)}%</span>` : '—'}</td></tr>`).join('')}</tbody>`;
+  $('#balWarn').innerHTML = warn.slice(0, 14).map(esc).join('<br>') + (warn.length > 14 ? `<br>…and ${warn.length - 14} more.` : '');
+  const gW = groups(st);
+  $('#stTable').innerHTML = `<thead><tr><th>Station</th><th class="n">Processes</th><th class="n">Weighted (${U().label})</th>${S.models.map((m) => `<th class="n">${esc(m.name)} (${U().label})</th>`).join('')}<th class="n">Labor, weighted</th><th class="n">Weighted vs takt</th></tr></thead><tbody>${gW.map((g) => `<tr><td>${esc(stLabel(g.name))}</td><td class="n">${g.els.length}</td><td class="n${tk && g.t > tk + 1e-9 ? ' over' : ''}">${fmtU(g.t, U().dp + 1)}</td>${S.models.map((m) => `<td class="n${tk && g.byModel[m.id] > tk + 1e-9 ? ' over' : ''}">${fmtU(g.byModel[m.id], U().dp + 1)}</td>`).join('')}<td class="n">${fmtU(g.labor, U().dp + 1)}</td><td class="n">${tk ? `<span class="tag ${g.t > tk + 1e-9 ? 'bad' : 'ok'}">${fmt(g.t / tk * 100, 0)}%</span>` : '—'}</td></tr>`).join('')}${tk ? `<tr class="total"><td>Takt</td><td></td><td class="n">${fmtU(tk, U().dp + 1)}</td>${S.models.map(() => `<td class="n">${fmtU(tk, U().dp + 1)}</td>`).join('')}<td></td><td></td></tr>` : ''}</tbody>`;
   const tInp = $('#target');
   if (document.activeElement !== tInp) tInp.value = S.balanceTarget != null ? inVal(S.balanceTarget) : '';
   tInp.placeholder = tk ? `Takt ${fmtU(tk)}` : 'Set demand';
   renderProp();
 }
+$('#balView').addEventListener('change', (e) => { BAL_VIEW = e.target.value; renderBalance(); });
 function suggest() {
   const tk = takt(), target = S.balanceTarget > 0 ? S.balanceTarget : tk;
   if (!target) { toast('Enter demand on the Setup tab, or type a target here.'); return; }
@@ -1181,18 +1456,22 @@ function suggest() {
 function renderProp() {
   const box = $('#propBox');
   if (!PROP) { box.innerHTML = ''; return; }
-  const st = allStats(), tk = takt(), { total } = totals(st);
+  const st = allStats(), tk = takt();
   if (S.elements.some((e) => !PROP.assign[e.id])) { PROP = null; box.innerHTML = ''; return; }
-  const gs = groups(st, PROP.assign);
+  const gs = groups(st, PROP.assign, '');
+  const worst = [];
+  for (const g of gs) for (const m of S.models) if (tk && g.byModel[m.id] > tk + 1e-9) worst.push(`${m.name} at ${g.name}: ${fmtT(g.byModel[m.id])}`);
   box.innerHTML = `
     ${PROP.loop ? '<p class="callout warn">Some “comes after” numbers go in a circle. Those processes were put in the last station. Check them on the Processes tab.</p>' : ''}
-    <div class="kpis">${balanceKpis(gs, total, tk)}</div>
-    <div class="chart">${chartSvg(gs, st, tk, PROP.target)}</div>
+    <div class="kpis">${balanceKpis(gs, tk, '')}</div>
+    <div class="chart">${chartSvg(gs, st, tk, PROP.target, '')}</div>
+    ${worst.length ? `<p class="callout warn">Even with this split, some models are over takt: ${esc(worst.slice(0, 6).join('; '))}${worst.length > 6 ? '…' : ''}.</p>` : ''}
     <div class="row"><button class="btn primary" id="propUse" type="button">Use this split (renames stations to Station 1, 2…)</button><button class="btn" id="propClose" type="button">Discard</button></div>
     <p class="note">Stations get new names (Station 1, 2…). Download the Excel workbook on the Files tab first if you want a copy of today’s split.</p>`;
 }
-function chartSvg(gs, st, tk, target) {
+function chartSvg(gs, st, tk, target, mid) {
   const W = 760, H = 330, pl = 50, pr = 16, pt = 24, pb = 50;
+  const val = (e) => { const s = st.get(e.id); return (mid ? s.byModel[mid] : s.perUnit) || 0; };
   const maxSt = Math.max(...gs.map((g) => g.t), 0);
   const top = Math.max(maxSt, tk || 0, target || 0) * 1.15 || 1;
   const y = (v) => pt + (H - pt - pb) * (1 - v / top);
@@ -1207,7 +1486,7 @@ function chartSvg(gs, st, tk, target) {
     const x = pl + slot * i + (slot - bw) / 2;
     let base = 0;
     for (const e of grp.els) {
-      const v = st.get(e.id).perUnit || 0; if (v <= 0) continue;
+      const v = val(e); if (v <= 0) continue;
       const y1 = y(base + v), h = y(base) - y1;
       g += `<rect class="seg ${e.type}" x="${x}" y="${y1}" width="${bw}" height="${Math.max(0, h)}"><title>${esc(`${elNo(e.id)}. ${e.name}: ${fmtT(v, U().dp + 1)}`)}</title></rect>`;
       if (h >= 15 && bw >= 22) g += `<text class="segl" x="${x + bw / 2}" y="${y1 + h / 2 + 4}" text-anchor="middle">${elNo(e.id)}</text>`;
@@ -1231,6 +1510,55 @@ $('#propBox').addEventListener('click', (e) => {
     for (const el of S.elements) el.station = PROP.assign[el.id];
     PROP = null; F.station = '*'; persist(); renderBalance(); toast('Stations updated.');
   });
+});
+
+/* ---------------- Delays ---------------- */
+function delaySummary(key) {
+  const m = new Map();
+  for (const d of S.delays) {
+    const k = (key === 'station' ? d.station : d.reason) || '(not given)';
+    const g = m.get(k) || { k, n: 0, t: 0, units: new Set() };
+    g.n++; g.t += d.dur; if (d.serial) g.units.add(d.serial); m.set(k, g);
+  }
+  return [...m.values()].sort((a, b) => b.t - a.t);
+}
+function delayBars(list) {
+  if (!list.length) return '<p class="note">No delays logged yet.</p>';
+  const max = list[0].t || 1, all = S.delays.reduce((a, d) => a + d.dur, 0) || 1;
+  return `<div class="bars">${list.map((g) => `<div class="barrow"><span>${esc(g.k)}</span><span class="track"><span class="fill" style="display:block;width:${(g.t / max * 100).toFixed(1)}%"></span></span><span class="mono small">${fmtT(g.t)} · ${g.n}× · ${g.units.size} unit${g.units.size === 1 ? '' : 's'} · ${fmt(g.t / all * 100, 0)}%</span></div>`).join('')}</div>`;
+}
+function renderDelays() {
+  refreshLists();
+  const rs = $('#dReason');
+  if (!rs.options.length) rs.innerHTML = REASONS.map((r) => `<option>${esc(r)}</option>`).join('');
+  if (!$('#dDate').value) $('#dDate').value = today();
+  const total = S.delays.reduce((a, d) => a + d.dur, 0), units = new Set(S.delays.map((d) => d.serial).filter(Boolean));
+  const byR = delaySummary('reason'), byS = delaySummary('station');
+  $('#delayKpis').innerHTML = [
+    kpi(fmtT(total), 'Total time lost to delays'),
+    kpi(S.delays.length, 'Delays logged'),
+    kpi(units.size, 'Units affected'),
+    kpi(byR[0] ? byR[0].k : '—', byR[0] ? `Biggest reason: ${fmtT(byR[0].t)} across ${byR[0].units.size} unit${byR[0].units.size === 1 ? '' : 's'}` : 'Biggest reason'),
+  ].join('');
+  $('#delayByReason').innerHTML = delayBars(byR);
+  $('#delayByStation').innerHTML = delayBars(byS);
+  const rows = [...S.delays].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  $('#delayTable').innerHTML = `<thead><tr><th>Date</th><th>Unit</th><th>Station</th><th>Reason</th><th class="n">How long</th><th>Note</th><th></th></tr></thead><tbody>${rows.map((d) => `<tr><td class="mono">${esc(d.date)}</td><td>${esc(d.serial)}</td><td>${esc(d.station)}</td><td>${esc(d.reason)}</td><td class="n">${fmtT(d.dur)}</td><td>${esc(d.note)}</td><td><button class="btn sm danger" type="button" data-deld="${esc(d.id)}" aria-label="Delete this delay">✕</button></td></tr>`).join('') || '<tr><td colspan="7" class="note">No delays logged yet.</td></tr>'}</tbody>`;
+}
+$('#dReason').addEventListener('change', (e) => { $('#dOtherWrap').hidden = e.target.value !== 'Other'; });
+$('#delayForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const dur = parseTime($('#dDur').value);
+  if (!(dur > 0)) { toast(`Type how long the delay was, in ${U().name} (or h:mm:ss).`); $('#dDur').focus(); return; }
+  let reason = $('#dReason').value;
+  if (reason === 'Other') reason = $('#dOther').value.trim() || 'Other';
+  S.delays.push({ id: newId('d'), date: $('#dDate').value || today(), serial: $('#dSerial').value.trim(), station: $('#dStation').value.trim(), reason, dur, note: $('#dNote').value.trim() });
+  $('#dDur').value = ''; $('#dNote').value = ''; $('#dOther').value = '';
+  persist(); renderDelays(); toast('Delay logged.');
+});
+$('#delayTable').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-deld]'); if (!b) return;
+  S.delays = S.delays.filter((d) => d.id !== b.dataset.deld); persist(); renderDelays();
 });
 
 /* ---------------- Files ---------------- */
@@ -1265,75 +1593,114 @@ $('#openFile').addEventListener('change', async (e) => {
   try {
     const doc = JSON.parse(await f.text());
     if (!doc || doc.format !== 'ie-time-study') throw new Error('not a study');
-    S = normalize(doc); PROP = null; F.station = '*'; persist(); showTab('setup'); toast(`Opened ${f.name}.`);
+    S = normalize(doc); PROP = null; F.station = '*'; BAL_VIEW = ''; persist(); showTab('setup'); toast(`Opened ${f.name}.`);
   } catch (err) { toast(`${f.name} isn’t a study file saved from this page.`); }
 });
 $('#newBtn').addEventListener('click', () => {
   if (T.on) { toast('Stop the stopwatch first.'); return; }
-  const go = () => { S = blank(); PROP = null; F.station = '*'; persist(); showTab('setup'); };
+  const go = () => { S = blank(); PROP = null; F.station = '*'; BAL_VIEW = ''; persist(); showTab('setup'); };
   if (S.elements.length) ask('Start a new, empty study? Save this one first if you need it.', 'Start new study', go); else go();
 });
 $('#sampleSel').addEventListener('change', (e) => {
   const v = e.target.value; e.target.value = '';
   if (!v) return;
   if (T.on) { toast('Stop the stopwatch first.'); return; }
-  const go = () => { S = v === 'long' ? sampleLong() : sampleShort(); PROP = null; F.station = '*'; persist(); showTab('results'); toast('Sample loaded. All numbers are made up.'); };
+  const go = () => { S = v === 'long' ? sampleLong() : sampleShort(); PROP = null; F.station = '*'; BAL_VIEW = ''; persist(); showTab('results'); toast('Sample loaded. All numbers are made up.'); };
   if (S.elements.length) ask('Replace your current study with the sample? Save yours first if you need it.', 'Load sample', go); else go();
 });
+
 /* ---- Tables shared by the workbook and the single CSV files ---- */
 function rowsStd() {
   const st = allStats(), { total, labor } = totals(st), u = U().label;
-  const rows = [['#', 'Station', 'Process', 'Type', 'Observations kept', `Average observed (${u})`, `Std deviation (${u})`, 'CV %', 'Rating %', 'Rating reason', `Normal time (${u})`, 'Allowance %', `Standard time (${u})`, 'Once every N units', `Standard per unit (${u})`, 'Crew', `Labor per unit (${u})`, `Observations needed (${C().confidence}%, ±${C().accuracy}%)`]];
+  const rows = [['#', 'Station', 'Process', 'Type', 'Observations kept', `Average observed (${u})`, `Std deviation (${u})`, 'CV %', 'Rating %', 'Rating reason', `Normal time (${u})`, 'Allowance %', `Standard per occurrence (${u})`, 'Once every N units', `Weighted per unit (${u})`, 'Crew', `Weighted labor per unit (${u})`, `Observations needed (${C().confidence}%, ±${C().accuracy}%)`, 'Status', 'Same work check']];
   S.elements.forEach((e, i) => {
-    const s = st.get(e.id);
-    rows.push([i + 1, e.station, e.name, TYPES[e.type], s.n, rd(s.mean), rd(s.sd), s.cv == null ? '' : +s.cv.toFixed(1), s.rating, (() => { const rr = ratingReason(e); return s.machine ? 'Machine-paced' : rr.own ? rr.text : rr.text ? `Default: ${rr.text}` : ''; })(), rd(s.normal), s.allow, rd(s.std), e.every, rd(s.perUnit), e.crew, rd(s.labor), s.need ?? '']);
+    const s = st.get(e.id), rr = ratingReason(e);
+    rows.push([i + 1, e.station, e.name, TYPES[e.type], s.n, rd(s.mean), rd(s.sd), s.cv == null ? '' : +s.cv.toFixed(1), s.rating, s.machine ? 'Machine-paced' : rr.own ? rr.text : rr.text ? `Default: ${rr.text}` : '', rd(s.normal), s.allow, rd(s.std), e.every, rd(s.perUnit), e.crew, rd(s.labor), s.need ?? '', statusText(s), s.sameWork ? `${s.sameWork.text}. Consider splitting.` : '']);
   });
-  rows.push([], ['', '', 'Total per unit', '', '', '', '', '', '', '', '', '', '', '', rd(total), '', rd(labor)]);
+  rows.push([], ['', '', 'Total per unit (weighted)', '', '', '', '', '', '', '', '', '', '', '', rd(total), '', rd(labor)]);
   const tk = takt(); if (tk) rows.push(['', '', 'Takt time', '', '', '', '', '', '', '', '', '', '', '', rd(tk)]);
   return rows;
 }
+function rowsMatrix() {
+  const st = allStats(), u = U().label, ms = S.models;
+  const rows = [['#', 'Station', 'Process', `Standard per occurrence (${u})`, 'Once every N units', ...ms.map((m) => `Qty ${m.name}`), ...ms.map((m) => `Time per unit ${m.name} (${u})`), `Weighted per unit (${u})`, 'Crew', ...ms.map((m) => `Labor per unit ${m.name} (${u})`), `Weighted labor (${u})`, 'Status']];
+  S.elements.forEach((e, i) => {
+    const s = st.get(e.id);
+    rows.push([i + 1, e.station, e.name, rd(s.std), e.every, ...ms.map((m) => qtyOf(e, m.id)), ...ms.map((m) => rd(s.byModel[m.id])), rd(s.perUnit), e.crew, ...ms.map((m) => rd(s.byModel[m.id] != null ? s.byModel[m.id] * s.crew : null)), rd(s.labor), statusText(s)]);
+  });
+  const tt = totals(st);
+  rows.push([], ['', '', 'Total per unit', '', '', ...ms.map(() => ''), ...ms.map((m) => rd(tt.byModel[m.id].t)), rd(tt.total), '', ...ms.map((m) => rd(tt.byModel[m.id].labor)), rd(tt.labor)]);
+  return rows;
+}
+function rowsModels() {
+  const st = allStats(), tt = totals(st), gs = groups(st), tk = takt(), u = U().label;
+  const rows = [['Model', `Demand per ${periodName()}`, 'Mix %', `Time per unit (${u})`, `Labor per unit (${u})`, 'Slowest station', `Slowest station time (${u})`, `Takt (${u})`, 'Within takt at every station?', 'Units observed']];
+  for (const m of S.models) {
+    const slow = gs.reduce((a, g) => (!a || g.byModel[m.id] > a.byModel[m.id] ? g : a), null);
+    rows.push([m.name, +m.demand || 0, totalDemand() > 0 ? +(mixOf(m.id) * 100).toFixed(1) : '', rd(tt.byModel[m.id].t), rd(tt.byModel[m.id].labor), slow ? stLabel(slow.name) : '', slow ? rd(slow.byModel[m.id]) : '', tk ? rd(tk) : '', tk && slow ? (slow.byModel[m.id] <= tk + 1e-9 ? 'Yes' : 'No') : '', S.cycles.filter((c) => c.model === m.id).length]);
+  }
+  rows.push(['Weighted average', totalDemand(), totalDemand() > 0 ? 100 : '', rd(tt.total), rd(tt.labor)]);
+  return rows;
+}
 function rowsObs() {
-  const rows = [['Station', 'Process', 'Type', 'Crew', 'Every', 'Comes after', ...S.cycles.map(obsLabel)]];
-  for (const e of S.elements) rows.push([e.station, e.name, TYPES[e.type], e.crew, e.every, afterText(e), ...S.cycles.map((c) => (c.t[e.id] != null ? (c.x[e.id] ? rd(c.t[e.id]) + '*' : rd(c.t[e.id])) : ''))]);
+  const rows = [['Station', 'Process', 'Type', 'Crew', 'Every', 'Comes after', 'Own rating %', 'Rating reason', 'Own allowance %', ...S.models.map((m) => `Qty ${m.name}`), ...S.cycles.map((c, i) => `${obsLabel(c, i)} [${modelName(c.model)}]`)]];
+  for (const e of S.elements) rows.push([e.station, e.name, TYPES[e.type], e.crew, e.every, afterText(e), e.rating ?? '', e.rating != null ? e.ratingNote || '' : '', e.allow ?? '', ...S.models.map((m) => qtyOf(e, m.id)), ...S.cycles.map((c) => {
+    const v = valsOf(c, e.id); if (!v.length) return '';
+    return v.length === 1 && !offOf(c, e.id).length ? rd(v[0]) : cellText(c, e.id, (x) => String(rd(x)));
+  })]);
   return rows;
 }
 function rowsStations() {
   const st = allStats(), gs = groups(st), tk = takt(), u = U().label;
-  const rows = [['Station', 'Processes', `Station time (${u})`, `Labor (${u})`, `Takt (${u})`, '% of takt', 'Process numbers']];
-  for (const g of gs) rows.push([stLabel(g.name), g.els.length, rd(g.t), rd(g.labor), tk ? rd(tk) : '', tk ? +(g.t / tk * 100).toFixed(1) : '', g.els.map((e) => elNo(e.id)).join(' ')]);
+  const rows = [['Station', 'Processes', `Weighted time (${u})`, ...S.models.map((m) => `${m.name} (${u})`), `Weighted labor (${u})`, `Takt (${u})`, '% of takt (weighted)', 'Models over takt', 'Process numbers']];
+  for (const g of gs) rows.push([stLabel(g.name), g.els.length, rd(g.t), ...S.models.map((m) => rd(g.byModel[m.id])), rd(g.labor), tk ? rd(tk) : '', tk ? +(g.t / tk * 100).toFixed(1) : '', tk ? S.models.filter((m) => g.byModel[m.id] > tk + 1e-9).map((m) => m.name).join(', ') : '', g.els.map((e) => elNo(e.id)).join(' ')]);
+  return rows;
+}
+function rowsDelays() {
+  const u = U().label;
+  const rows = [['Date', 'Unit', 'Station', 'Reason', `Duration (${u})`, 'Note']];
+  for (const d of S.delays) rows.push([d.date, d.serial, d.station, d.reason, rd(d.dur), d.note]);
+  rows.push([], ['By reason', '', '', '', `Total (${u})`, 'Count', 'Units affected']);
+  for (const g of delaySummary('reason')) rows.push([g.k, '', '', '', rd(g.t), g.n, g.units.size]);
+  rows.push([], ['By station', '', '', '', `Total (${u})`, 'Count', 'Units affected']);
+  for (const g of delaySummary('station')) rows.push([g.k, '', '', '', rd(g.t), g.n, g.units.size]);
   return rows;
 }
 function rowsSummary() {
-  const st = allStats(), { total, labor, missing } = totals(st), tk = takt(), gs = groups(st), u = U().label;
+  const st = allStats(), tt = totals(st), tk = takt(), gs = groups(st), u = U().label;
   const max = gs.reduce((a, g) => Math.max(a, g.t), 0), avail = availSec();
   const b = S.baseline, d = S.demand, c = C();
+  let prelim = 0; for (const e of S.elements) if (st.get(e.id).status !== 'final') prelim++;
   return [
     ['Time study summary'],
     [],
-    ['Study', S.study.name], ['Line or cell', S.study.cell], ['Product or model', S.study.part],
+    ['Study', S.study.name], ['Line or cell', S.study.cell], ['Product family', S.study.part],
     ['Operators observed', S.study.operator], ['Observer', S.study.observer], ['Date', S.study.date], ['Notes', S.study.notes],
     [],
     ['Results'],
-    [`Standard time per unit (${u})`, rd(total)], [`Labor per unit (${u})`, rd(labor)],
-    [`Takt time (${u})`, tk ? rd(tk) : ''], ['Minimum operators to meet takt', tk && labor ? Math.ceil(labor / tk - 1e-9) : ''],
-    ['Stations', gs.length], [`Slowest station (${u})`, rd(max)],
-    [`Units per ${periodName()} possible`, max && avail ? +(avail / max).toFixed(1) : ''],
-    ['Processes', S.elements.length], ['Processes not timed yet', missing], ['Units observed (columns)', S.cycles.length],
+    [`Weighted time per unit (${u})`, rd(tt.total)], [`Weighted labor per unit (${u})`, rd(tt.labor)],
+    ...S.models.map((m) => [`Labor per unit, ${m.name} (${u})`, rd(tt.byModel[m.id].labor)]),
+    [`Takt time (${u})`, tk ? rd(tk) : ''], ['Minimum operators to meet takt', tk && tt.labor ? Math.ceil(tt.labor / tk - 1e-9) : ''],
+    ['Stations', gs.length], [`Slowest station, weighted (${u})`, rd(max)],
+    [`Units per ${periodName()} possible (weighted)`, max && avail ? +(avail / max).toFixed(1) : ''],
+    ['Processes', S.elements.length], ['Processes still preliminary', prelim], ['Units observed', S.cycles.length],
+    [`Time lost to logged delays (${u})`, rd(S.delays.reduce((a, x) => a + x.dur, 0))],
     [],
     ['Constants'],
-    ['Times in', U().name], ['Default rating %', defRating()], ['Why this default rating', C().ratingNote || (defRating() === 100 ? 'Normal pace' : 'NOT WRITTEN DOWN')],
+    ['Times in', U().name], ['Default rating %', defRating()], ['Why this default rating', c.ratingNote || (defRating() === 100 ? 'Normal pace' : 'NOT WRITTEN DOWN')],
     ['Personal allowance %', +c.personal || 0], ['Fatigue allowance %', +c.fatigue || 0], ['Delay allowance %', +c.delay || 0], ['Other allowance %', +c.other || 0], ['Total allowance %', allowTotal()],
     ['Confidence %', +c.confidence], ['Accuracy ± %', +c.accuracy || 0],
     [],
     ['Demand'],
-    [`Units needed per ${periodName()}`, d.units ?? ''], ['Work days per week', d.per === 'week' ? d.days ?? '' : ''], ['Shifts per day', d.shifts ?? ''], ['Minutes per shift', d.shiftMin ?? ''], ['Breaks and meetings (min per shift)', d.breakMin ?? ''],
+    ...S.models.map((m) => [`${m.name}, units per ${periodName()}`, +m.demand || 0]),
+    [`Total units per ${periodName()}`, totalDemand()], ['Work days per week', d.per === 'week' ? d.days ?? '' : ''], ['Shifts per day', d.shifts ?? ''], ['Minutes per shift', d.shiftMin ?? ''], ['Breaks and meetings (min per shift)', d.breakMin ?? ''],
     [`Available hours per ${periodName()}`, avail ? +(avail / 3600).toFixed(2) : ''],
     [],
     ['Baseline (before number)'],
     ['What was measured', b.metric], ['Before', b.before ?? ''], ['After', b.after ?? ''], ['Unit', b.unit], ['Date measured', b.date], ['How measured', b.how],
     [],
-    ['Formulas: Normal = Average × Rating ÷ 100. Standard = Normal × (1 + Allowance ÷ 100). Per unit = Standard ÷ Every. Labor = Per unit × Crew.'],
-    ['On the Observations sheet, a * after a time means it was left out of the averages.'],
+    ['Formulas: Normal = Average × Rating ÷ 100. Standard (per occurrence) = Normal × (1 + Allowance ÷ 100). Time per unit for a model = Standard × Qty ÷ Every. Labor = Time × Crew. Weighted = Σ Mix × model value.'],
+    ['On the Observations sheet, a * after a time means it was left out of the averages, and two times in one cell mean the process was done twice on that unit.'],
   ];
 }
 
@@ -1379,7 +1746,7 @@ function sheetXml(rows, opt) {
     }).join('');
     return `<row r="${ri + 1}">${cells}</row>`;
   }).join('');
-  const cols = widths.length ? `<cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${Math.max(8, (opt.header ? Math.min(w, 28) : w) + 2)}" customWidth="1"/>`).join('')}</cols>` : '';
+  const cols = widths.length ? `<cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${Math.max(8, (opt.header ? Math.min(w || 8, 28) : w || 8) + 2)}" customWidth="1"/>`).join('')}</cols>` : '';
   const freeze = opt.header ? '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' : '<sheetViews><sheetView workbookViewId="0"/></sheetViews>';
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${freeze}${cols}<sheetData>${body}</sheetData></worksheet>`;
 }
@@ -1397,22 +1764,26 @@ function xlsx(sheets) {
 const SUMMARY_HEADS = new Set(['Time study summary', 'Results', 'Constants', 'Demand', 'Baseline (before number)']);
 $('#xlsxBtn').addEventListener('click', () => {
   if (!S.elements.length) { toast('Add processes first.'); return; }
-  const totalRow = (r) => r[2] === 'Total per unit' || r[2] === 'Takt time';
+  const totalRow = (r) => /^Total per unit/.test(r[2] || '') || r[2] === 'Takt time' || r[0] === 'Weighted average';
   const book = xlsx([
     { name: 'Summary', rows: rowsSummary(), boldRows: (r) => r.length === 1 && SUMMARY_HEADS.has(r[0]) },
+    { name: 'Models & mix', rows: rowsModels(), header: true, boldRows: totalRow },
     { name: 'Standard times', rows: rowsStd(), header: true, boldRows: totalRow },
+    { name: 'Process x model', rows: rowsMatrix(), header: true, boldRows: totalRow },
     { name: 'Observations', rows: rowsObs(), header: true },
-    { name: 'Stations', rows: rowsStations(), header: true },
+    { name: 'Stations per model', rows: rowsStations(), header: true },
+    { name: 'Delays', rows: rowsDelays(), header: true, boldRows: (r) => r[0] === 'By reason' || r[0] === 'By station' },
   ]);
   download(`${slug()}-${today()}.xlsx`, book, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Workbook saved to your downloads.');
 });
 $('#csvStd').addEventListener('click', () => download(`${slug()}-standard-times.csv`, csv(rowsStd()), 'text/csv'));
 $('#csvRaw').addEventListener('click', () => download(`${slug()}-observations-${U().label}.csv`, csv(rowsObs()), 'text/csv'));
 $('#csvBal').addEventListener('click', () => { if (!S.elements.length) { toast('Add processes first.'); return; } download(`${slug()}-stations.csv`, csv(rowsStations()), 'text/csv'); });
+$('#csvDel').addEventListener('click', () => download(`${slug()}-delays.csv`, csv(rowsDelays()), 'text/csv'));
 $('#printBtn').addEventListener('click', () => {
   const keep = F.station; F.station = '*';
   for (const p of $$('.panel[id^="tab-"]')) p.hidden = false;
-  renderResults(); renderBalance();
+  renderResults(); renderBalance(); renderDelays();
   setTimeout(() => { window.print(); F.station = keep; showTab(tab); }, 50);
 });
 
@@ -1443,13 +1814,14 @@ function lxTime(src, st, gs) {
   return null;
 }
 function renderFiles() {
+  const hide = inViewer(); $('#reportHead').hidden = hide; $('#reportRow').hidden = hide;
   const box = $('#lxBody');
   if (!LX) { box.innerHTML = ''; return; }
   const st = allStats(), gs = groups(st);
   const matched = LX.stops.filter((s) => s.src).length;
   const opts = (sel) => `<option value="">Keep its current time</option>
-    <optgroup label="Stations">${gs.map((g) => `<option value="s:${esc(g.name)}"${sel === 's:' + g.name ? ' selected' : ''}>${esc(stLabel(g.name))} (${fmtT(g.t)})</option>`).join('')}</optgroup>
-    <optgroup label="Processes">${S.elements.map((e, i) => `<option value="e:${esc(e.id)}"${sel === 'e:' + e.id ? ' selected' : ''}>${i + 1}. ${esc(e.name)} (${fmtT(st.get(e.id).perUnit)})</option>`).join('')}</optgroup>`;
+    <optgroup label="Stations (weighted)">${gs.map((g) => `<option value="s:${esc(g.name)}"${sel === 's:' + g.name ? ' selected' : ''}>${esc(stLabel(g.name))} (${fmtT(g.t)})</option>`).join('')}</optgroup>
+    <optgroup label="Processes (weighted per unit)">${S.elements.map((e, i) => `<option value="e:${esc(e.id)}"${sel === 'e:' + e.id ? ' selected' : ''}>${i + 1}. ${esc(e.name)} (${fmtT(st.get(e.id).perUnit)})</option>`).join('')}</optgroup>`;
   box.innerHTML = `
     <p class="note">${esc(LX.file)}: ${LX.stops.length} stops, ${matched} matched by name.</p>
     <div class="scroll"><table><thead><tr><th>Path</th><th>Stop</th><th class="n">Wait now</th><th>Use time from</th><th class="n">New wait</th></tr></thead><tbody>
@@ -1467,7 +1839,7 @@ $('#lxBody').addEventListener('click', (e) => {
   const st = allStats(), gs = groups(st), doc = JSON.parse(JSON.stringify(LX.doc));
   let n = 0;
   for (const s of LX.stops) { const t = lxTime(s.src, st, gs); if (t != null) { doc.paths[s.pi].pts[s.qi].wait = Math.round(t * 10) / 10; n++; } }
-  doc.timesFrom = { study: S.study.name || '', date: today(), note: 'Stop waits set from standard times (seconds per unit).' };
+  doc.timesFrom = { study: S.study.name || '', date: today(), note: 'Stop waits set from standard times (seconds per unit, weighted across the model mix).' };
   download(LX.file.replace(/\.json$/i, '') + '-timed.json', JSON.stringify(doc, null, 2), 'application/json', `Saved. ${n} stop${n === 1 ? '' : 's'} got new times.`);
 });
 
@@ -1475,9 +1847,10 @@ $('#lxBody').addEventListener('click', (e) => {
 function rng(seed) { return () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }; }
 function sampleLong() {
   const s = blank();
-  s.study = { name: 'Sample: padmount build', cell: 'Final assembly line', part: 'Padmount unit (generic)', operator: 'Crews A and B', observer: 'Sample', date: today(), notes: 'Made-up numbers to show how the tool works. A real unit has hundreds of processes; this sample has 27.' };
+  s.study = { name: 'Sample: padmount build, 3 models', cell: 'Final assembly line', part: 'Padmount units (generic)', operator: 'Crews A and B', observer: 'Sample', date: today(), notes: 'Made-up numbers to show how the tool works. A real unit has hundreds of processes; this sample has 30.' };
   s.baseline = { metric: 'Labor hours per unit', before: 31, after: null, unit: 'hours', date: today(), how: 'Average of the last 10 travelers (sample)', higherBetter: 'no' };
-  s.demand = { units: 12, per: 'week', days: 5, shifts: 1, shiftMin: 480, breakMin: 50 };
+  s.demand = { per: 'week', days: 5, shifts: 1, shiftMin: 480, breakMin: 50 };
+  s.models = [{ id: 'mA', name: 'Model A', demand: 6 }, { id: 'mB', name: 'Model B', demand: 4 }, { id: 'mC', name: 'Model C', demand: 2 }];
   s.constants.unit = 'min'; s.constants.accuracy = 10;
   const defs = [
     ['Frame & base', 'Stage base frame with crane', 'walk', 2, 11], ['Frame & base', 'Weld sill channels', 'manual', 1, 51], ['Frame & base', 'Grind and clean welds', 'manual', 1, 21], ['Frame & base', 'Install ground pads and lifting lugs', 'manual', 1, 17],
@@ -1487,23 +1860,36 @@ function sampleLong() {
     ['Wiring', 'Mount gauges and pressure relief', 'manual', 1, 21], ['Wiring', 'Install fuses and switch', 'manual', 1, 27], ['Wiring', 'Route and dress control wiring', 'manual', 1, 42], ['Wiring', 'Labels and nameplate', 'manual', 1, 9],
     ['Fill & test', 'Vacuum fill', 'machine', 1, 72], ['Fill & test', 'Leak test', 'machine', 1, 36], ['Fill & test', 'Electrical tests', 'manual', 2, 45], ['Fill & test', 'Final inspection and touch-up', 'manual', 1, 24], ['Fill & test', 'Load out to shipping', 'walk', 2, 12],
   ];
-  s.elements = defs.map(([station, name, type, crew], i) => ({ id: 'e' + (i + 1), station, name, type, crew, every: 1, after: i ? ['e' + i] : [], rating: null, allow: null }));
+  s.elements = defs.map(([station, name, type, crew], i) => ({ id: 'e' + (i + 1), station, name, type, crew, every: 1, after: i ? ['e' + i] : [], rating: null, ratingNote: '', allow: null, qty: {} }));
   s.elements[1].rating = 110; s.elements[1].ratingNote = 'Most experienced welder on the line (12 years). Westinghouse B2 skill (+0.08), C2 effort (+0.02).';
   s.elements[16].after = ['e16']; s.elements[17].after = ['e16']; s.elements[18].after = ['e17', 'e18'];
-  const r = rng(11), serials = ['Unit 2041', 'Unit 2042', 'Unit 2043'];
-  serials.forEach((label, c) => {
-    const cy = { id: 'c' + (c + 1), label, when: new Date(Date.now() - (3 - c) * 864e5).toISOString(), t: {}, x: {} };
+  // occasional work, a process done twice on Model C, and one only Model C has
+  s.elements.push(
+    { id: 'e28', station: 'Frame & base', name: 'Change welding wire spool', type: 'manual', crew: 1, every: 5, after: [], rating: null, ratingNote: '', allow: null, qty: {} },
+    { id: 'e29', station: 'Enclosure', name: 'Install access panel', type: 'manual', crew: 1, every: 1, after: ['e8'], rating: null, ratingNote: '', allow: null, qty: { mA: 1, mB: 1, mC: 2 } },
+    { id: 'e30', station: 'Core install', name: 'Brace second core bay', type: 'manual', crew: 1, every: 1, after: ['e15'], rating: null, ratingNote: '', allow: null, qty: { mA: 0, mB: 0, mC: 1 } },
+  );
+  const r = rng(11), units = [['Unit 2041', 'mA'], ['Unit 2042', 'mB'], ['Unit 2043', 'mC']];
+  units.forEach(([label, model], c) => {
+    const cy = { id: 'c' + (c + 1), label, model, when: new Date(Date.now() - (3 - c) * 864e5).toISOString(), t: {}, x: {} };
     defs.forEach((d, i) => {
       if (c === 2 && i === 6) return; // not observed on this unit
-      cy.t['e' + (i + 1)] = Math.round(d[4] * 10 * (1 + (r() - 0.5) * (d[2] === 'machine' ? 0.04 : 0.2))) * 6;
+      cy.t['e' + (i + 1)] = [Math.round(d[4] * 10 * (1 + (r() - 0.5) * (d[2] === 'machine' ? 0.04 : 0.2))) * 6];
     });
     s.cycles.push(cy);
   });
-  // occasional work: a wire spool change once every 5 units, seen on two of the three units
-  s.elements.push({ id: 'e28', station: 'Frame & base', name: 'Change welding wire spool', type: 'manual', crew: 1, every: 5, after: [], rating: null, allow: null });
-  s.cycles[0].t.e28 = 15 * 60; s.cycles[2].t.e28 = 14 * 60 + 24;
-  s.cycles[1].t.e17 = 64 * 60; s.cycles[1].x.e17 = true; // flagged: waited for parts
-  s.cycles[0].t.e21 = 61 * 60;                           // unusual, left in so the page points it out
+  s.cycles[1].t.e17 = [64 * 60]; s.cycles[1].x.e17 = [0]; // flagged: waited for parts (logged as a delay)
+  s.cycles[0].t.e21 = [61 * 60];                         // unusual, left in so the page points it out
+  s.cycles[0].t.e28 = [15 * 60]; s.cycles[2].t.e28 = [14 * 60 + 24];
+  s.cycles[0].t.e29 = [32 * 60]; s.cycles[1].t.e29 = [31 * 60]; s.cycles[2].t.e29 = [33 * 60, 41 * 60]; // 2nd panel is harder to reach
+  s.cycles[2].t.e30 = [45 * 60];
+  const day = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+  s.delays = [
+    { id: 'd1', date: day(2), serial: 'Unit 2042', station: 'Core install', reason: 'Waiting for parts', dur: 26 * 60, note: 'LV lead kit not kitted' },
+    { id: 'd2', date: day(3), serial: 'Unit 2041', station: 'Fill & test', reason: 'Waiting for crane or forklift', dur: 25 * 60, note: '' },
+    { id: 'd3', date: day(1), serial: 'Unit 2043', station: 'Wiring', reason: 'Drawing or engineering question', dur: 18 * 60, note: 'Fuse rating not on traveler' },
+    { id: 'd4', date: day(1), serial: 'Unit 2043', station: 'Core install', reason: 'Waiting for parts', dur: 40 * 60, note: 'Bracing kit short 4 bolts' },
+  ];
   return s;
 }
 const SHORT_REASONS = { 1: 'Steady, practised pace on a familiar cut length.', 2: 'Hesitated on each strip length; new stripping tool this week.', 6: 'Labels were pre-queued in the printer, so hands moved faster than normal.', 8: 'Paused to recount cables in the tote.' };
@@ -1511,7 +1897,8 @@ function sampleShort() {
   const s = blank();
   s.study = { name: 'Sample: cable assembly', cell: 'Cable assembly', part: 'Battery cable, 4 AWG', operator: 'Operator A', observer: 'Sample', date: today(), notes: 'Made-up numbers to show how the tool works.' };
   s.baseline = { metric: 'Cables per shift', before: 240, after: null, unit: 'cables', date: today(), how: 'Average of the last 10 shift reports (sample)', higherBetter: 'yes' };
-  s.demand = { units: 300, per: 'day', days: 5, shifts: 1, shiftMin: 480, breakMin: 50 };
+  s.demand = { per: 'day', days: 5, shifts: 1, shiftMin: 480, breakMin: 50 };
+  s.models = [{ id: 'm1', name: 'Battery cable', demand: 300 }];
   s.constants.unit = 's';
   const defs = [
     ['Get cable from reel rack', 'walk', 7, 1, [], 100], ['Measure and cut to length', 'manual', 16, 1, [1], 105], ['Strip both ends', 'manual', 13, 1, [2], 95],
@@ -1519,21 +1906,21 @@ function sampleShort() {
     ['Print and apply labels', 'manual', 12, 1, [2], 110], ['Pull test', 'manual', 10, 1, [6], 100], ['Bundle and place in tote', 'manual', 8, 1, [7, 8], 95],
     ['Refill lugs and label roll', 'walk', 75, 25, [], 100],
   ];
-  s.elements = defs.map(([name, type, , every, after, rating], i) => ({ id: 'e' + (i + 1), station: i < 6 ? 'Cut & crimp' : 'Finish', name, type, crew: 1, every, after: after.map((n) => 'e' + n), rating: rating === 100 ? null : rating, ratingNote: SHORT_REASONS[i] || '', allow: null }));
+  s.elements = defs.map(([name, type, , every, after, rating], i) => ({ id: 'e' + (i + 1), station: i < 6 ? 'Cut & crimp' : 'Finish', name, type, crew: 1, every, after: after.map((n) => 'e' + n), rating: rating === 100 ? null : rating, ratingNote: SHORT_REASONS[i] || '', allow: null, qty: {} }));
   const r = rng(7);
   for (let c = 0; c < 12; c++) {
-    const cy = { id: 'c' + (c + 1), label: '', when: new Date(Date.now() - 3600e3 + c * 125e3).toISOString(), t: {}, x: {} };
-    defs.forEach((d, i) => { if (d[3] > 1 && c !== 4 && c !== 10) return; cy.t['e' + (i + 1)] = Math.round(d[2] * (1 + (r() - 0.5) * (d[1] === 'machine' ? 0.03 : 0.16)) * 100) / 100; });
+    const cy = { id: 'c' + (c + 1), label: '', model: 'm1', when: new Date(Date.now() - 3600e3 + c * 125e3).toISOString(), t: {}, x: {} };
+    defs.forEach((d, i) => { if (d[3] > 1 && c !== 4 && c !== 10) return; cy.t['e' + (i + 1)] = [Math.round(d[2] * (1 + (r() - 0.5) * (d[1] === 'machine' ? 0.03 : 0.16)) * 100) / 100]; });
     s.cycles.push(cy);
   }
-  s.cycles[6].t.e2 = 29.4;
-  s.cycles[2].t.e3 = 21.8; s.cycles[2].x.e3 = true;
+  s.cycles[6].t.e2 = [29.4];
+  s.cycles[2].t.e3 = [21.8]; s.cycles[2].x.e3 = [0];
   return s;
 }
 
 /* ---------------- Start ---------------- */
-if (inViewer()) { $('#printBtn').closest('.row').previousElementSibling.hidden = true; $('#printBtn').closest('.row').hidden = true; }
 try { const t = localStorage.getItem(KEY + ':tab'); if (t && $(`#tab-${t}`)) tab = t; } catch (e) { /* ignore */ }
+T.model = S.models[0].id;
 showTab(tab);
 window.addEventListener('beforeunload', (e) => { if (T.on) { e.preventDefault(); e.returnValue = ''; } });
 })();
