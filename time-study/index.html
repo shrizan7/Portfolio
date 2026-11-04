@@ -152,7 +152,10 @@ body.dragmode, body.dragmode * { cursor: grabbing !important; user-select: none;
 .clocks b { font: 600 32px/1.1 var(--mono); font-variant-numeric: tabular-nums; }
 .clocks span { font-size: 12px; color: var(--muted); }
 .bigbtn { width: 100%; min-height: 110px; font-size: 26px; font-weight: 700; border-radius: 10px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
-.tbtns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.tbtns { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
+.btn.pausebtn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); font-weight: 650; }
+.pausebox { display: flex; flex-direction: column; gap: 10px; background: var(--warn-bg); border: 1px solid var(--warn); border-radius: 8px; padding: 12px; }
+.pausebox .clocks b { color: var(--warn); }
 .tbtns .btn { min-height: 48px; font-size: 14px; white-space: normal; }
 .btn.flagged { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
 .prog { display: flex; gap: 3px; flex-wrap: wrap; }
@@ -1351,7 +1354,7 @@ function pasteRun(confirmed) {
 }
 
 /* ---------------- Stopwatch ---------------- */
-const T = { on: false, cy: null, seq: [], idx: 0, mark: 0, cycleStart: 0, hist: [], flag: false, int: 0, station: '*', model: null };
+const T = { on: false, cy: null, seq: [], idx: 0, mark: 0, cycleStart: 0, hist: [], flag: false, int: 0, station: '*', model: null, paused: null, pausedMs: 0, lastReason: REASONS[0] };
 let wakeLock = null;
 async function wake() { try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { wakeLock = null; } }
 function unwake() { try { wakeLock && wakeLock.release(); } catch (e) { /* ignore */ } wakeLock = null; }
@@ -1373,21 +1376,45 @@ function tStart() {
   T.seq = buildSeq();
   if (!T.seq.length) { toast(`No processes for ${modelName(T.model)}${T.station !== '*' ? ' at this station' : ''}.`); return; }
   const c = newCycle();
-  Object.assign(T, { on: true, cy: c.id, idx: 0, mark: performance.now(), hist: [], flag: false });
+  Object.assign(T, { on: true, cy: c.id, idx: 0, mark: performance.now(), hist: [], flag: false, paused: null, pausedMs: 0 });
   T.cycleStart = T.mark;
   T.int = setInterval(tickClock, 100);
   wake(); persist(); renderTimer(); renderProc();
 }
+// Pause: the process clock stops, and the paused time is logged as a delay when work starts again
+function tPause() {
+  if (!T.on || T.paused) return;
+  T.paused = { start: performance.now(), reason: T.lastReason, note: '' };
+  renderTimer();
+}
+function tResume(quiet) {
+  if (!T.paused) return;
+  const now = performance.now(), ms = now - T.paused.start, c = curCycle(), st = curStep(), el = st && elById(st.id);
+  T.pausedMs += ms;
+  const sec = Math.round(ms / 100) / 10;
+  let reason = T.paused.reason || 'Other';
+  const note = String(T.paused.note || '').trim();
+  if (reason === 'Other' && note) reason = note;
+  if (sec >= 1) {
+    S.delays.push({ id: newId('d'), date: today(), serial: c ? (c.label || obsLabel(c, S.cycles.indexOf(c))) : '', station: el ? el.station : '', reason, dur: sec, note: `${note && reason !== note ? note + '. ' : ''}Paused during process ${el ? elNo(el.id) + ' ' + el.name : ''} (stopwatch)` });
+    if (!quiet) toast(`Pause of ${fmtT(sec)} logged on the Delays tab as “${reason}”.`);
+  }
+  T.lastReason = T.paused.reason;
+  T.paused = null;
+  persist();
+  if (!quiet) renderTimer();
+}
 function tNext(skip) {
   if (!T.on) return;
+  if (T.paused) tResume(true);
   const now = performance.now(), c = curCycle(), st = curStep();
   if (!c || !st) { tStop(); return; }
-  T.hist.push({ cy: c.id, el: st.id, idx: T.idx, prevMark: T.mark, pushed: !skip });
+  T.hist.push({ cy: c.id, el: st.id, idx: T.idx, prevMark: T.mark, prevPaused: T.pausedMs, pushed: !skip });
   if (!skip) {
     const arr = c.t[st.id] || (c.t[st.id] = []);
-    arr.push(Math.round((now - T.mark) / 10) / 100);
+    arr.push(Math.round((now - T.mark - T.pausedMs) / 10) / 100);
     if (T.flag) (c.x[st.id] || (c.x[st.id] = [])).push(arr.length - 1);
-    T.mark = now;
+    T.mark = now; T.pausedMs = 0;
   }
   T.flag = false; T.idx++;
   if (T.idx >= T.seq.length) {
@@ -1399,6 +1426,7 @@ function tNext(skip) {
 }
 function tUndo() {
   if (!T.on) return;
+  if (T.paused) tResume(true);
   let h = T.hist.pop(); if (!h) { toast('Nothing to undo in this run.'); return; }
   if (h.newCycle) {
     const c = S.cycles.find((x) => x.id === h.cy);
@@ -1412,21 +1440,24 @@ function tUndo() {
     const arr = c.t[h.el]; arr.pop();
     if (c.x[h.el]) { c.x[h.el] = c.x[h.el].filter((i) => i < arr.length); if (!c.x[h.el].length) delete c.x[h.el]; }
     if (!arr.length) delete c.t[h.el];
-    T.mark = h.prevMark;
+    T.mark = h.prevMark; T.pausedMs = h.prevPaused || 0;
   }
   T.cy = h.cy; T.idx = h.idx; T.flag = false;
   persist(); renderTimer();
 }
 function tStop() {
+  if (T.paused) tResume(true);
   const c = curCycle();
   if (c && !Object.keys(c.t).length) S.cycles = S.cycles.filter((x) => x !== c);
-  Object.assign(T, { on: false, cy: null, idx: 0, hist: [], flag: false });
+  Object.assign(T, { on: false, cy: null, idx: 0, hist: [], flag: false, paused: null, pausedMs: 0 });
   clearInterval(T.int); unwake(); persist(); renderTimer(); renderProc(); renderHeader();
 }
 function tickClock() {
   if (!T.on) return;
-  const now = performance.now(), a = $('#clkEl'), b = $('#clkCy');
-  if (a) a.textContent = fmtClock((now - T.mark) / 1000);
+  const now = performance.now(), a = $('#clkEl'), b = $('#clkCy'), pz = $('#clkPause');
+  const pausedNow = T.paused ? now - T.paused.start : 0;
+  if (a) a.textContent = fmtClock(Math.max(0, now - T.mark - T.pausedMs - pausedNow) / 1000);
+  if (pz) pz.textContent = fmtClock(pausedNow / 1000);
   if (b) b.textContent = fmtClock((now - T.cycleStart) / 1000);
 }
 function renderTimer() {
@@ -1436,7 +1467,7 @@ function renderTimer() {
     const names = stationNames();
     box.innerHTML = `
       <p>Pick the model, then press <b>Start</b> when the first process begins and <b>Next</b> each time a process ends. A process done twice on this model is asked for twice. Each run adds a new Obs column to the table above.</p>
-      <p class="note">Keep the page open while timing. If the browser is closed, the process being timed is lost (times already recorded are kept). For processes that take hours, it is usually easier to note start and end clock times and type the durations into the table. Keys on a laptop: Space = Next, S = Skip, F = Flag, Backspace = Undo, Esc = Stop.</p>
+      <p class="note">Keep the page open while timing. If the browser is closed, the process being timed is lost (times already recorded are kept). For processes that take hours, it is usually easier to note start and end clock times and type the durations into the table. Keys on a laptop: Space = Next, P = Pause / Resume, S = Skip, F = Flag, Backspace = Undo, Esc = Stop.</p>
       <div class="row end">
         <label class="field" style="width:200px"><span>Model</span><select id="swModel">${S.models.map((m) => `<option value="${esc(m.id)}"${m.id === T.model ? ' selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>
         <label class="field" style="width:240px"><span>Time the processes of</span><select id="swStation">${['*', ...names].map((n) => `<option value="${esc(n)}"${n === T.station ? ' selected' : ''}>${n === '*' ? 'All stations, in order' : esc(stLabel(n))}</option>`).join('')}</select></label>
@@ -1447,7 +1478,7 @@ function renderTimer() {
   const st = curStep(), el = elById(st.id), nxs = T.seq[T.idx + 1] || T.seq[0], nx = elById(nxs.id);
   const c = curCycle();
   box.innerHTML = `
-    <div class="row between"><h2>${esc(obsLabel(c, S.cycles.indexOf(c)))} · ${esc(modelName(c.model))} · step ${T.idx + 1} of ${T.seq.length}</h2><span class="tag ${T.flag ? 'warn' : ''}">${T.flag ? 'This time will be flagged' : 'Timing'}</span></div>
+    <div class="row between"><h2>${esc(obsLabel(c, S.cycles.indexOf(c)))} · ${esc(modelName(c.model))} · step ${T.idx + 1} of ${T.seq.length}</h2><span class="tag ${T.flag || T.paused ? 'warn' : ''}">${T.paused ? 'Paused: process clock stopped' : T.flag ? 'This time will be flagged' : 'Timing'}</span></div>
     <div class="prog">${T.seq.map((s, i) => `<span class="${i < T.idx ? ((c.t[s.id] || []).length > s.occ ? 'done' : 'skip') : i === T.idx ? 'cur' : ''}"></span>`).join('')}</div>
     <div class="now">
       <span class="label">Now timing</span>
@@ -1455,15 +1486,24 @@ function renderTimer() {
       ${el.every > 1 ? `<span class="after">Happens once every ${fmt(el.every, 0)} units. Press Skip if it isn’t done this time.</span>` : ''}
       <span class="after">Next: ${T.idx + 1 < T.seq.length ? '' : 'new unit, '}${esc(nx ? nx.name : '')}${nxs.of > 1 ? ` (${ord(nxs.occ + 1)})` : ''}</span>
     </div>
-    <div class="clocks"><div><b id="clkEl">0.0</b><span>this process</span></div><div><b id="clkCy">0.0</b><span>this unit</span></div></div>
-    <button class="btn primary bigbtn" id="tNext" type="button">Next ▸</button>
+    <div class="clocks"><div><b id="clkEl">0.0</b><span>this process (work only)</span></div><div><b id="clkCy">0.0</b><span>this unit</span></div></div>
+    ${T.paused ? `
+    <div class="pausebox">
+      <div class="clocks"><div><b id="clkPause">0.0</b><span>paused</span></div></div>
+      <div class="form">
+        <label class="field"><span>Why did work stop?</span><select id="tReason">${REASONS.map((r) => `<option${r === T.paused.reason ? ' selected' : ''}>${esc(r)}</option>`).join('')}</select></label>
+        <label class="field"><span>Note (optional)</span><input type="text" id="tNote" value="${esc(T.paused.note)}" placeholder="e.g. busbar kit not kitted"></label>
+      </div>
+      <button class="btn primary bigbtn" id="tResume" type="button">Resume ▸</button>
+    </div>` : `<button class="btn primary bigbtn" id="tNext" type="button">Next ▸</button>`}
     <div class="tbtns">
+      ${T.paused ? '' : '<button class="btn pausebtn" id="tPause" type="button">❚❚ Pause</button>'}
       <button class="btn" id="tSkip" type="button">Skip</button>
-      <button class="btn ${T.flag ? 'flagged' : ''}" id="tFlag" type="button" aria-pressed="${T.flag}">Flag interruption</button>
+      <button class="btn ${T.flag ? 'flagged' : ''}" id="tFlag" type="button" aria-pressed="${T.flag}">Flag: leave out</button>
       <button class="btn" id="tUndo" type="button">Undo</button>
       <button class="btn danger" id="tStop" type="button">Stop</button>
     </div>
-    <p class="note"><b>Flag</b> if something unusual happens (jam, wrong part, waiting for a crane). The time is kept but left out of the averages. Log the lost time on the Delays tab.</p>`;
+    <p class="note"><b>Pause</b> when work stops for a reason that isn’t the job (waiting for parts, the crane, the inspector). The process clock stops, so its time stays clean and still counts. The paused time goes on the Delays tab with the unit, station and reason filled in.<br><b>Flag</b> leaves this whole time out of the averages. Use it when something went wrong with the work itself (wrong method, dropped part, a new person learning).</p>`;
   tickClock();
 }
 $('#timer').addEventListener('click', (e) => {
@@ -1472,17 +1512,21 @@ $('#timer').addEventListener('click', (e) => {
   if (id === 'tNext') tNext(false);
   if (id === 'tSkip') tNext(true);
   if (id === 'tFlag') { T.flag = !T.flag; renderTimer(); }
+  if (id === 'tPause') tPause();
+  if (id === 'tResume') tResume();
   if (id === 'tUndo') tUndo();
   if (id === 'tStop') tStop();
 });
 $('#timer').addEventListener('change', (e) => { if (e.target.id === 'swStation') T.station = e.target.value; if (e.target.id === 'swModel') T.model = e.target.value; });
+$('#timer').addEventListener('input', (e) => { if (!T.paused) return; if (e.target.id === 'tReason') T.paused.reason = e.target.value; if (e.target.id === 'tNote') T.paused.note = e.target.value; });
 $('#swBox').addEventListener('toggle', () => { if ($('#swBox').open) renderTimer(); });
 document.addEventListener('keydown', (e) => {
   if (tab !== 'proc' || !$('#swBox').open) return;
   const tag = (e.target.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
   if (!T.on) return;
-  if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); tNext(false); }
+  if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); if (T.paused) tResume(); else tNext(false); }
+  else if (e.key === 'p' || e.key === 'P') { if (T.paused) tResume(); else tPause(); }
   else if (e.key === 's' || e.key === 'S') tNext(true);
   else if (e.key === 'f' || e.key === 'F') { T.flag = !T.flag; renderTimer(); }
   else if (e.key === 'Backspace') { e.preventDefault(); tUndo(); }
