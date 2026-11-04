@@ -126,6 +126,9 @@ body.dragmode, body.dragmode * { cursor: grabbing !important; user-select: none;
 .chip { font: 12px var(--mono); padding: 3px 6px; border-radius: 4px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
 .chip sup { font-size: 9px; color: var(--muted); }
 .chip.sus { border-color: var(--warn); background: var(--warn-bg); color: var(--warn); }
+.chipbox { position: absolute; z-index: 15; width: 250px; background: var(--panel); border: 1px solid var(--muted); border-radius: 8px; padding: 10px; box-shadow: 0 6px 22px rgba(0,0,0,.22); display: flex; flex-direction: column; gap: 8px; }
+.chipbox .row { gap: 6px; }
+.chip.editing { outline: 2px solid var(--accent); outline-offset: 1px; }
 .chip.off { text-decoration: line-through; color: var(--muted); background: transparent; border-style: dashed; }
 .tag { font-size: 11px; padding: 2px 6px; border-radius: 99px; border: 1px solid var(--line); white-space: nowrap; }
 .tag.ok { color: var(--ok); border-color: var(--ok); }
@@ -396,8 +399,8 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
           <label class="field" style="width:200px"><span class="showSt">Show station</span><select id="rStation"></select></label>
         </div>
       </div>
-      <p class="note" id="resNoteShort">Tap an observation to leave it out (or put it back). Orange times are more than 30% away from that process’s middle value. <b>Standard</b> = Average × Rating % × (1 + Allowance %), for doing the process once. If a process happens more or less than once per unit, the time per unit is shown under it. <b>Preliminary</b> means it doesn’t have enough observations yet. All times are in <b class="unitName">minutes</b>.</p>
-      <p class="note" id="resNoteLong" hidden>Tap an observation to leave it out (or put it back). A small number after a time marks the 2nd or 3rd time on that unit. Orange times are more than 30% away from that process’s middle value. <b>Standard</b> is per occurrence (one panel, one weld). <b>Per unit</b> is the weighted average across the mix. <b>Preliminary</b> means it doesn’t have enough observations yet. All times are in <b class="unitName">minutes</b>.</p>
+      <p class="note" id="resNoteShort">Tap an observation to change it, leave it out, or delete it. Orange times are more than 30% away from that process’s middle value. <b>Standard</b> = Average × Rating % × (1 + Allowance %), for doing the process once. If a process happens more or less than once per unit, the time per unit is shown under it. <b>Preliminary</b> means it doesn’t have enough observations yet. All times are in <b class="unitName">minutes</b>.</p>
+      <p class="note" id="resNoteLong" hidden>Tap an observation to change it, leave it out, or delete it. A small number after a time marks the 2nd or 3rd time on that unit. Orange times are more than 30% away from that process’s middle value. <b>Standard</b> is per occurrence (one panel, one weld). <b>Per unit</b> is the weighted average across the mix. <b>Preliminary</b> means it doesn’t have enough observations yet. All times are in <b class="unitName">minutes</b>.</p>
       <div class="tall"><table class="res" id="resTable"></table></div>
     </div>
     <div class="card">
@@ -539,6 +542,15 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
   <div class="askin"><span id="askMsg"></span><span class="row"><button class="btn" id="askNo" type="button">Cancel</button><button class="btn primary" id="askYes" type="button">Yes</button></span></div>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
+<div class="chipbox" id="chipBox" role="dialog" aria-labelledby="chipHead" hidden>
+  <b class="small" id="chipHead"></b>
+  <label class="field"><span id="chipLab">Time</span><input type="text" id="chipVal" inputmode="decimal"></label>
+  <label class="row small"><input type="checkbox" id="chipOff"> Leave this one out of the average</label>
+  <div class="row between">
+    <button class="btn sm danger" id="chipDel" type="button">Delete time</button>
+    <span class="row"><button class="btn sm" id="chipNo" type="button">Cancel</button><button class="btn sm primary" id="chipOk" type="button">Save</button></span>
+  </div>
+</div>
 
 <script>
 (() => {
@@ -908,6 +920,7 @@ const statusText = (s) => (s.status === 'none' ? 'Not timed' : s.status === 'pre
 
 /* ---------------- Tabs ---------------- */
 function showTab(t) {
+  if (typeof chipClose === 'function' && CHIP) chipClose();
   tab = t;
   for (const b of $$('.tabs button')) b.setAttribute('aria-selected', b.dataset.tab === t ? 'true' : 'false');
   for (const p of $$('.panel[id^="tab-"]')) p.hidden = p.id !== 'tab-' + t;
@@ -1580,7 +1593,7 @@ function renderResults() {
     const chips = s.all.map((r) => {
       const sus = !r.off && s.n >= 3 && s.med && Math.abs(r.v - s.med) / s.med > 0.3;
       const c = S.cycles.find((x) => x.id === r.cy), lab = c ? obsLabel(c, S.cycles.indexOf(c)) : '';
-      return `<button type="button" class="chip${r.off ? ' off' : ''}${sus ? ' sus' : ''}" data-cy="${esc(r.cy)}" data-el="${esc(e.id)}" data-occ="${r.occ}" title="${esc(`${lab} · ${modelName(r.model)}${r.occ ? ` · ${ord(r.occ + 1)} time` : ''}`)}. ${r.off ? 'Left out. Tap to use it again.' : 'Tap to leave this one out.'}">${fmtU(r.v)}${r.occ ? `<sup>${r.occ + 1}</sup>` : ''}</button>`;
+      return `<button type="button" class="chip${r.off ? ' off' : ''}${sus ? ' sus' : ''}" data-cy="${esc(r.cy)}" data-el="${esc(e.id)}" data-occ="${r.occ}" title="${esc(`${lab} · ${modelName(r.model)}${r.occ ? ` · ${ord(r.occ + 1)} time` : ''}`)}. ${r.off ? 'Left out. Tap to change it or use it again.' : 'Tap to change it or leave it out.'}">${fmtU(r.v)}${r.occ ? `<sup>${r.occ + 1}</sup>` : ''}</button>`;
     }).join('') || '<span class="note">none yet</span>';
     const rr = ratingReason(e);
     // Only a process with its own rating gets a reason box, under its name
@@ -1632,14 +1645,61 @@ function renderResults() {
     : `<tr class="total"><td></td><td colspan="5">Whole unit, per unit</td><td class="n">${fmtU(tt.total, U().dp + 1)}</td><td></td></tr>`;
   $('#resTable').innerHTML = `<thead>${head}</thead><tbody>${body}</tbody>`;
 }
-$('#resTable').addEventListener('click', (e) => {
-  const b = e.target.closest('.chip'); if (!b) return;
-  const c = S.cycles.find((x) => x.id === b.dataset.cy); if (!c) return;
-  const id = b.dataset.el, occ = +b.dataset.occ, cur = offOf(c, id);
-  const next = cur.includes(occ) ? cur.filter((i) => i !== occ) : [...cur, occ].sort((a, z) => a - z);
-  if (next.length) c.x[id] = next; else delete c.x[id];
-  persist(); renderResults();
-});
+// Tap a time on the Standard times tab: change it, leave it out, or delete it
+let CHIP = null;
+function chipClose() { CHIP = null; $('#chipBox').hidden = true; for (const x of $$('.chip.editing')) x.classList.remove('editing'); }
+function chipOpen(b) {
+  const c = S.cycles.find((x) => x.id === b.dataset.cy), el = elById(b.dataset.el); if (!c || !el) return;
+  const occ = +b.dataset.occ, v = valsOf(c, el.id)[occ]; if (v == null) return;
+  chipClose();
+  CHIP = { cy: c.id, el: el.id, occ };
+  b.classList.add('editing');
+  $('#chipHead').textContent = `${elNo(el.id)}. ${el.name || '(unnamed)'} · ${obsLabel(c, S.cycles.indexOf(c))} · ${modelName(c.model)}${occ ? ` · ${ord(occ + 1)} time` : ''}`;
+  $('#chipLab').textContent = `Time (${U().name}, or h:mm:ss)`;
+  $('#chipVal').value = inVal(v);
+  $('#chipOff').checked = offOf(c, el.id).includes(occ);
+  $('#chipBox').hidden = false;
+  chipPlace();
+  $('#chipVal').focus({ preventScroll: true }); $('#chipVal').select();
+}
+// Keep the box under its time, also when the table scrolls
+function chipPlace() {
+  const b = $('.chip.editing'), box = $('#chipBox');
+  if (!CHIP || !b) return;
+  const r = b.getBoundingClientRect(), w = box.offsetWidth;
+  box.style.left = `${Math.max(8, Math.min(window.scrollX + r.left, window.scrollX + document.documentElement.clientWidth - w - 8))}px`;
+  box.style.top = `${window.scrollY + r.bottom + 6}px`;
+}
+function chipSave() {
+  if (!CHIP) return;
+  const c = S.cycles.find((x) => x.id === CHIP.cy), arr = c && c.t[CHIP.el]; if (!arr) { chipClose(); return; }
+  const v = parseTime($('#chipVal').value);
+  if (v == null) { chipDelete(); return; }
+  if (Number.isNaN(v)) { toast(`“${$('#chipVal').value}” isn’t a time. Type a number in ${U().name}, or h:mm:ss.`); $('#chipVal').focus(); return; }
+  arr[CHIP.occ] = Math.round(v * 100) / 100;
+  const off = offOf(c, CHIP.el).filter((i) => i !== CHIP.occ);
+  if ($('#chipOff').checked) off.push(CHIP.occ);
+  if (off.length) c.x[CHIP.el] = off.sort((a, z) => a - z); else delete c.x[CHIP.el];
+  chipClose(); persist(); renderResults(); toast('Time saved.');
+}
+function chipDelete() {
+  if (!CHIP) return;
+  const c = S.cycles.find((x) => x.id === CHIP.cy), arr = c && c.t[CHIP.el]; if (!arr) { chipClose(); return; }
+  const k = CHIP.occ;
+  arr.splice(k, 1);
+  const off = offOf(c, CHIP.el).filter((i) => i !== k).map((i) => (i > k ? i - 1 : i));
+  if (off.length) c.x[CHIP.el] = off; else delete c.x[CHIP.el];
+  if (!arr.length) delete c.t[CHIP.el];
+  chipClose(); persist(); renderResults(); toast('Time deleted.');
+}
+$('#resTable').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (b) chipOpen(b); });
+$('#chipOk').addEventListener('click', chipSave);
+$('#chipDel').addEventListener('click', chipDelete);
+$('#chipNo').addEventListener('click', chipClose);
+$('#resTable').closest('.tall').addEventListener('scroll', chipPlace);
+window.addEventListener('resize', chipPlace);
+$('#chipBox').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'chipVal') { e.preventDefault(); chipSave(); } if (e.key === 'Escape') chipClose(); });
+document.addEventListener('pointerdown', (e) => { if (CHIP && !e.target.closest('#chipBox') && !e.target.closest('.chip')) chipClose(); });
 $('#resTable').addEventListener('change', (e) => {
   const inp = e.target.closest('input[data-f]'); if (!inp) return;
   const el = elById(inp.closest('tr').dataset.el); if (!el) return;
