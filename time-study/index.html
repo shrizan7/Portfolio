@@ -193,10 +193,6 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
 
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 6px; font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgba(0,0,0,.25); z-index: 10; }
 .toastbtn { margin-left: 10px; font: 700 14px var(--font); color: var(--paper); background: none; border: 1px solid currentColor; border-radius: 4px; padding: 3px 9px; cursor: pointer; }
-table.sheet { width: auto; min-width: 300px; max-width: 460px; border: 1px solid var(--line); }
-table.sheet td { padding: 5px 10px; }
-table.sheet td.n { background: var(--sub); min-width: 90px; }
-table.sheet tr.big td { font-weight: 700; }
 .print-head { display: none; }
 .askbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--warn-bg); border-top: 2px solid var(--warn);
   padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
@@ -288,11 +284,8 @@ table.sheet tr.big td { font-weight: 700; }
         <label class="field"><span>Shifts per day</span><input type="number" min="0" step="any" data-k="demand.shifts" data-num></label>
         <label class="field"><span>Minutes per shift</span><input type="number" min="0" step="any" data-k="demand.shiftMin" data-num></label>
         <label class="field"><span>Breaks and meetings (min per shift)</span><input type="number" min="0" step="any" data-k="demand.breakMin" data-num></label>
-        <label class="field"><span>Efficiency % (100 = not used)</span><input type="number" min="1" max="100" step="any" data-k="demand.efficiency" data-num></label>
       </div>
       <p class="derived" id="taktOut">—</p>
-      <table class="sheet" id="sheetBox"></table>
-      <div class="callout warn" id="effWarn" hidden></div>
     </div>
 
     <div class="card">
@@ -591,7 +584,7 @@ function blank() {
     format: 'ie-time-study', version: 4,
     study: { name: '', cell: '', part: '', operator: '', observer: '', date: today(), notes: '' },
     baseline: { metric: '', before: null, after: null, unit: '', date: '', how: '', higherBetter: 'yes' },
-    demand: { per: 'day', days: 5, shifts: 1, shiftMin: 480, breakMin: 50, efficiency: 100 },
+    demand: { per: 'day', days: 5, shifts: 1, shiftMin: 480, breakMin: 50 },
     models: [{ id: newId('m'), name: 'Model 1', demand: null }],
     layout: { mode: 'flow', gateStop: 'yes', people: {}, crewSize: 2 },
     constants: { unit: 'min', rating: 100, ratingNote: '', personal: 5, fatigue: 4, delay: 6, other: 0, confidence: '95', accuracy: 5, wh: { skill: 'D Average', effort: 'D Average', cond: 'D Average', cons: 'D Average' } },
@@ -622,7 +615,6 @@ function normalize(s) {
   const out = { ...b, ...s, version: 4 };
   for (const k of ['study', 'baseline', 'demand', 'constants', 'layout']) out[k] = { ...b[k], ...(s[k] || {}) };
   // layout: studies from before version 4 are flow lines
-  if (!(+out.demand.efficiency > 0 && +out.demand.efficiency <= 100)) out.demand.efficiency = 100;
   if (out.layout.mode !== 'fixed') out.layout.mode = 'flow';
   if (out.layout.gateStop !== 'no') out.layout.gateStop = 'yes';
   const ppl = {};
@@ -736,16 +728,6 @@ function availSec() {
 }
 const totalDemand = () => S.models.reduce((a, m) => a + (+m.demand > 0 ? +m.demand : 0), 0);
 function takt() { const a = availSec(), u = totalDemand(); return a && u > 0 ? a / u : null; }
-// Efficiency below 100% sets a target cycle time under takt, as in a planning sheet: target = takt × efficiency
-const effic = () => { const e = +S.demand.efficiency; return e > 0 && e <= 100 ? e : 100; };
-const useTarget = () => effic() < 100;
-function targetCT() { const t = takt(); return t ? t * effic() / 100 : null; }
-// What each station or phase is checked against: the target cycle time if efficiency is set, otherwise takt
-const lim = () => (useTarget() ? targetCT() : takt());
-const limName = () => (useTarget() ? 'target cycle time' : 'takt');
-const LimName = () => (useTarget() ? 'Target cycle time' : 'Takt');
-const dayDemand = () => (S.demand.per === 'week' ? (+S.demand.days > 0 ? totalDemand() / +S.demand.days : null) : totalDemand());
-const dayAvail = () => (+S.demand.shifts || 0) * ((+S.demand.shiftMin || 0) - (+S.demand.breakMin || 0)) * 60;
 function mixOf(mid) { const t = totalDemand(), m = modelById(mid); return t > 0 ? (+m.demand > 0 ? +m.demand : 0) / t : 1 / S.models.length; }
 const median = (xs) => { const a = [...xs].sort((p, q) => p - q), m = a.length >> 1; return a.length ? (a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2) : null; };
 function groupMeans(list, key) {
@@ -853,7 +835,7 @@ function unitsSeen() { return new Set([...S.cycles.map((c) => c.label || c.id), 
 // Phases (crew work) and checkpoints in build order. mid = a model id, or '' for the weighted average.
 // assign/crewSize are used to preview a suggested split.
 function phaseData(st, mid, assign, crewSize) {
-  const tk = takt(), lm = lim(), nU = unitsSeen(), stop = S.layout.gateStop !== 'no';
+  const tk = takt(), nU = unitsSeen(), stop = S.layout.gateStop !== 'no';
   const seq = [], phases = [], gates = [];
   let lastPhase = null;
   for (const g of groups(st, assign, '')) {
@@ -863,7 +845,7 @@ function phaseData(st, mid, assign, crewSize) {
       const longest = (m) => work.reduce((a, e) => { const s = st.get(e.id); return s.std && (!m || qtyOf(e, m) > 0) && s.std > a.t ? { t: s.std, e } : a; }, { t: 0, e: null });
       const laborW = labor(''), maxCrew = Math.max(1, ...work.map((e) => e.crew || 1));
       const set = assign ? crewSize : +S.layout.people[g.name] > 0 ? +S.layout.people[g.name] : null;
-      const sugg = lm && laborW > 0 ? Math.max(maxCrew, Math.ceil(laborW / lm - 1e-9)) : maxCrew;
+      const sugg = tk && laborW > 0 ? Math.max(maxCrew, Math.ceil(laborW / tk - 1e-9)) : maxCrew;
       const people = set || sugg;
       const byModel = {}, laborBy = {};
       let tW = 0;
@@ -876,7 +858,7 @@ function phaseData(st, mid, assign, crewSize) {
       const p = {
         kind: 'phase', name: g.name, els: work, labor: lab, laborW, laborBy, people, set: !!set, sugg, maxCrew,
         time: mid ? byModel[mid] : tW, byModel, longest: longest(mid),
-        need: lm && lab > 0 ? Math.max(maxCrew, Math.ceil(lab / lm - 1e-9)) : null,
+        need: tk && lab > 0 ? Math.max(maxCrew, Math.ceil(lab / tk - 1e-9)) : null,
       };
       phases.push(p); seq.push(p); lastPhase = g.name;
     }
@@ -911,7 +893,7 @@ function phaseData(st, mid, assign, crewSize) {
     seq, phases, gates, build, buildBy, slow, nU, stop,
     bays: tk && build > 0 ? Math.ceil(build / tk - 1e-9) : null,
     builders: phases.reduce((a, p) => a + p.people, 0),
-    buildersMin: lm && builderLabor > 0 ? Math.ceil(builderLabor / lm - 1e-9) : null,
+    buildersMin: tk && builderLabor > 0 ? Math.ceil(builderLabor / tk - 1e-9) : null,
     inspLabor, inspLoad: tk ? inspLabor / tk : null,
   };
 }
@@ -1035,7 +1017,6 @@ function renderDerived() {
     ? `Takt time: ${fmtT(t, 2)} per unit  (${fmt(a / 3600, 1)} h available per ${periodName()} ÷ ${fmt(tot, 0)} units, all models)`
     : 'Takt time: enter units needed for at least one model, and the shift time';
   $('#allowOut').textContent = `Total allowance: ${fmt(allowTotal())}%`;
-  renderSheet();
   $('#gateWrap').hidden = !FIXED();
   $('#layoutNote').innerHTML = FIXED()
     ? `<p>The <b>Station</b> column now means the <b>phase</b> a crew owns. Each crew finishes its phase on one unit, then moves to the next unit. To keep up, every phase has to fit in one takt.</p>
@@ -1054,38 +1035,12 @@ function renderDerived() {
   } else $('#baselineChange').textContent = '';
   renderHeader();
 }
-// The same steps as a planning sheet: units per day, takt, efficiency, target cycle time, stations
-function renderSheet() {
-  const t = takt(), tg = targetCT(), ud = dayDemand(), ad = dayAvail();
-  const st = allStats(), tt = totals(st), work = FIXED() ? tt.labor - tt.check : tt.labor;
-  const stations = tg && work > 0 ? work / tg : null;
-  const row = (label, v, big) => `<tr${big ? ' class="big"' : ''}><td>${label}</td><td class="n">${v}</td></tr>`;
-  $('#sheetBox').innerHTML = `<tbody>
-    ${row('Units per day', ud ? fmt(ud, 1) : '—', true)}
-    ${row('Available hours per day', ad > 0 ? fmt(ad / 3600, 1) : '—')}
-    ${row('Takt time (hours)', t ? fmt(t / 3600, 1) : '—')}
-    ${row('Takt time (min)', t ? fmt(t / 60, 1) : '—')}
-    ${row('Efficiency', `${fmt(effic(), 0)}%`)}
-    ${row('Target cycle time per station (min)', tg ? fmt(tg / 60, 1) : '—')}
-    ${row(`Work content per unit (min)${FIXED() ? ', checkpoints not included' : ''}`, work > 0 ? fmt(work / 60, 1) : '—')}
-    ${row('Stations (people) needed', stations ? `${fmt(stations, 2)} → ${Math.ceil(stations - 1e-9)}` : '—', true)}
-  </tbody>`;
-  const both = useTarget() && allowTotal() > 0;
-  $('#effWarn').hidden = !both;
-  if (both) $('#effWarn').innerHTML = `You’re using both an efficiency of ${fmt(effic(), 0)}% and allowances of ${fmt(allowTotal(), 0)}%. That counts the same slack twice. To match a planning sheet that uses efficiency, set the allowances to 0. <button class="btn sm" type="button" id="zeroAllow">Set allowances to 0</button>`;
-}
-$('#effWarn').addEventListener('click', (e) => {
-  if (!e.target.closest('#zeroAllow')) return;
-  Object.assign(C(), { personal: 0, fatigue: 0, delay: 0, other: 0 });
-  persist(); renderSetup(); toast('Allowances set to 0. Efficiency now covers the slack.');
-});
 function onSetupEdit(e) {
   const k = e.target.dataset.k;
   if (k) {
     setPath(k, e.target.hasAttribute('data-num') ? numOrNull(e.target.value) : e.target.value);
     persist(); renderDerived();
     if (k === 'constants.unit' || k === 'layout.mode') renderAll();
-    if (k === 'demand.efficiency') { const v = +S.demand.efficiency; if (!(v > 0 && v <= 100)) { S.demand.efficiency = v > 100 ? 100 : S.demand.efficiency; } renderSheet(); }
     if (k === 'demand.per') renderModels();
     return;
   }
@@ -1614,7 +1569,7 @@ function renderResults() {
   refreshLists();
   const st = allStats(), tt = totals(st), tk = takt();
   const fx = FIXED(), buildLabor = fx ? tt.labor - tt.check : tt.labor;
-  const lm = lim(), minOps = lm && buildLabor > 0 ? Math.ceil(buildLabor / lm - 1e-9) : null;
+  const minOps = tk && buildLabor > 0 ? Math.ceil(buildLabor / tk - 1e-9) : null;
   let prelim = 0, flagged = 0;
   for (const e of S.elements) { const s = st.get(e.id); if (s.status !== 'final') prelim++; if (s.sameWork) flagged++; }
   const conf = `${C().confidence}% / ±${fmt(+C().accuracy, 0)}%`;
@@ -1622,8 +1577,7 @@ function renderResults() {
     kpi(fmtT(tt.total), `Weighted time per unit, all processes${tt.missing ? ` (${tt.missing} not timed)` : ''}`),
     kpi(fmtT(tt.labor), 'Weighted labor per unit (× crew)'),
     kpi(tk ? fmtT(tk) : '—', tk ? 'Takt time (all models)' : 'Takt time (enter demand on Setup)'),
-    ...(useTarget() && tk ? [kpi(fmtT(targetCT()), `Target cycle time (takt × ${fmt(effic(), 0)}%)`)] : []),
-    kpi(minOps ?? '—', `${fx ? 'Minimum builders' : 'Minimum operators'} to meet ${limName()}${lm && buildLabor > 0 ? ` (${fmt(buildLabor / lm, 2)})` : ''}${fx ? ', checkpoints not included' : ''}`),
+    kpi(minOps ?? '—', fx ? 'Minimum builders to meet takt (checkpoints not included)' : 'Minimum operators to meet takt'),
     ...(fx ? [kpi(fmtT(tt.check), 'Inspector work per unit (checkpoints)')] : []),
     kpi(prelim ? `${prelim}` : S.elements.length ? 'None' : '—', prelim ? `processes still preliminary (${conf})` : `preliminary processes (${conf})`, prelim ? 'bad' : 'good'),
   ].join('');
@@ -1640,10 +1594,10 @@ function renderResults() {
 
   // by model
   const gsW = groups(st), pdW = fx ? phaseData(st, '') : null;
-  $('#modelResTable').innerHTML = `<thead><tr><th>Model</th><th class="n">Demand / ${periodName()}</th><th class="n">Mix</th><th class="n">${fx ? 'Work time per unit' : 'Time per unit'}</th><th class="n">Labor per unit</th>${fx ? '<th class="n">Build time, start to finish</th>' : ''}<th>Slowest ${word()}</th><th class="n">vs ${limName()}</th></tr></thead><tbody>${S.models.map((m) => {
+  $('#modelResTable').innerHTML = `<thead><tr><th>Model</th><th class="n">Demand / ${periodName()}</th><th class="n">Mix</th><th class="n">${fx ? 'Work time per unit' : 'Time per unit'}</th><th class="n">Labor per unit</th>${fx ? '<th class="n">Build time, start to finish</th>' : ''}<th>Slowest ${word()}</th><th class="n">vs takt</th></tr></thead><tbody>${S.models.map((m) => {
     const t = tt.byModel[m.id], slow = slowest(st, m.id);
-    const over = lm && slow && slow.t > lm + 1e-9;
-    return `<tr><td><b>${esc(m.name)}</b></td><td class="n">${fmt(+m.demand || 0, 0)}</td><td class="n">${totalDemand() > 0 ? fmt(mixOf(m.id) * 100, 0) + '%' : '—'}</td><td class="n">${fmtT(t.t)}</td><td class="n">${fmtT(t.labor)}</td>${fx ? `<td class="n">${fmtT(pdW.buildBy[m.id])}</td>` : ''}<td>${slow ? `${esc(stLabel(slow.name))} · ${fmtT(slow.t)}` : '—'}</td><td class="n">${lm && slow ? `<span class="tag ${over ? 'bad' : 'ok'}">${fmt(slow.t / lm * 100, 0)}%</span>` : '—'}</td></tr>`;
+    const over = tk && slow && slow.t > tk + 1e-9;
+    return `<tr><td><b>${esc(m.name)}</b></td><td class="n">${fmt(+m.demand || 0, 0)}</td><td class="n">${totalDemand() > 0 ? fmt(mixOf(m.id) * 100, 0) + '%' : '—'}</td><td class="n">${fmtT(t.t)}</td><td class="n">${fmtT(t.labor)}</td>${fx ? `<td class="n">${fmtT(pdW.buildBy[m.id])}</td>` : ''}<td>${slow ? `${esc(stLabel(slow.name))} · ${fmtT(slow.t)}` : '—'}</td><td class="n">${tk && slow ? `<span class="tag ${over ? 'bad' : 'ok'}">${fmt(slow.t / tk * 100, 0)}%</span>` : '—'}</td></tr>`;
   }).join('')}<tr class="total"><td>Weighted average (mix)</td><td class="n">${fmt(totalDemand(), 0)}</td><td class="n">${totalDemand() > 0 ? '100%' : ''}</td><td class="n">${fmtT(tt.total)}</td><td class="n">${fmtT(tt.labor)}</td>${fx ? `<td class="n">${fmtT(pdW.build)}</td>` : ''}<td></td><td></td></tr></tbody>`;
 
   if (!S.elements.length) { $('#resTable').innerHTML = '<tr><td class="note">No processes yet.</td></tr>'; return; }
@@ -1784,7 +1738,7 @@ function balanceKpis(gs, tk, mid) {
   const meets = out != null && units > 0 ? out >= units - 1e-9 : null;
   return [
     kpi(n, 'Stations'),
-    kpi(fmtT(max), `Slowest station${mid ? ` for ${modelName(mid)}` : ''}${useTarget() && lim() ? ` (target ${fmtT(lim())})` : ''}`, lim() ? (max <= lim() + 1e-9 ? 'good' : 'bad') : ''),
+    kpi(fmtT(max), `Slowest station${mid ? ` for ${modelName(mid)}` : ''}`, tk ? (max <= tk + 1e-9 ? 'good' : 'bad') : ''),
     kpi(out ? fmt(out, out < 10 ? 1 : 0) : '—', `Units per ${periodName()} possible${mid ? ` if only ${modelName(mid)} ran` : ''}${units > 0 ? ` (need ${fmt(units, 0)})` : ''}`, meets == null ? '' : meets ? 'good' : 'bad'),
     kpi(eff ? fmt(eff, 0) + '%' : '—', 'Balance efficiency (100% = no waiting)'),
     kpi(fmtT(n * max - total), 'Waiting time per unit, all stations'),
@@ -1802,8 +1756,8 @@ function renderBalance() {
   $('#crewSizeWrap').hidden = !fx;
   $('#stHead').textContent = fx ? 'Phases: crew size and time per model' : 'Station time per model';
   $('#stNote').textContent = fx
-    ? `Type the real number of people in each crew. Grey numbers are suggestions: the fewest people that fit the ${limName()}. Red means that model takes the crew longer than the ${limName()}.`
-    : `Red means that model is over the ${limName()} at that station. Labor multiplies each process by its crew.`;
+    ? 'Type the real number of people in each crew. Grey numbers are suggestions: the fewest people that fit takt. Red means that model takes the crew longer than takt.'
+    : 'Red means that model is over takt at that station. Labor multiplies each process by its crew.';
   $('#sugNote').textContent = fx
     ? 'Re-splits the work into phases so each crew (of the size you give) fits in the target, using the ranked positional weight method. Work never crosses a checkpoint, and never goes before a process it has to come after. Nothing changes until you press “Use this split”.'
     : 'Re-splits the processes into stations so each is close to the target (weighted average), using the ranked positional weight method and never putting a process before one it has to come after. Nothing changes until you press “Use this split”.';
@@ -1812,7 +1766,7 @@ function renderBalance() {
   if (fx) renderFixed(st, tk); else renderFlow(st, tk);
   const tInp = $('#target');
   if (document.activeElement !== tInp) tInp.value = S.balanceTarget != null ? inVal(S.balanceTarget) : '';
-  tInp.placeholder = lim() ? `${LimName()} ${fmtU(lim())}` : 'Set demand';
+  tInp.placeholder = tk ? `Takt ${fmtU(tk)}` : 'Set demand';
   const cs = $('#crewSize'); if (document.activeElement !== cs) cs.value = S.layout.crewSize;
   renderProp();
 }
@@ -1830,46 +1784,44 @@ function showWarnings(warn) {
   $('#balWarn').innerHTML = warn.slice(0, 14).map(esc).join('<br>') + (warn.length > 14 ? `<br>…and ${warn.length - 14} more.` : '');
 }
 function renderFlow(st, tk) {
-  const lm = lim(), ln = limName(), tg = useTarget() ? targetCT() : null;
   const gs = groups(st, null, BAL_VIEW);
   $('#chartTitle').textContent = `Work per station: ${BAL_VIEW ? modelName(BAL_VIEW) : 'weighted average'} (yamazumi)`;
   $('#balKpis').innerHTML = gs.length && S.elements.length ? balanceKpis(gs, tk, BAL_VIEW) : '';
-  $('#chart').innerHTML = S.elements.length ? chartSvg(gs, st, tk, tg, BAL_VIEW) : '<p class="note">Add processes and their stations on the Processes tab.</p>';
+  $('#chart').innerHTML = S.elements.length ? chartSvg(gs, st, tk, null, BAL_VIEW) : '<p class="note">Add processes and their stations on the Processes tab.</p>';
   const warn = [];
-  if (lm) for (const g of groups(st)) {
-    const over = S.models.filter((m) => (+m.demand > 0 || !totalDemand()) && g.byModel[m.id] > lm + 1e-9).sort((a, z) => g.byModel[z.id] - g.byModel[a.id]);
-    if (g.t > lm + 1e-9) warn.push(`${stLabel(g.name)} is over ${ln}: weighted average ${fmtT(g.t)}${over.length ? `, worst ${over[0].name} at ${fmtT(g.byModel[over[0].id])}` : ''}, vs ${fmtT(lm)} ${ln}. Move work out, cut waste, or add a parallel station.`);
-    else if (over.length) warn.push(`${over.map((m) => m.name).join(', ')} put${over.length > 1 ? '' : 's'} ${stLabel(g.name)} at ${fmtT(g.byModel[over[0].id])} vs ${fmtT(lm)} ${ln}, even though the weighted average fits. When ${over.length > 1 ? 'these models' : 'it'} come${over.length > 1 ? '' : 's'} down the line, this station falls behind.`);
+  if (tk) for (const g of groups(st)) {
+    const over = S.models.filter((m) => (+m.demand > 0 || !totalDemand()) && g.byModel[m.id] > tk + 1e-9).sort((a, z) => g.byModel[z.id] - g.byModel[a.id]);
+    if (g.t > tk + 1e-9) warn.push(`${stLabel(g.name)} is over takt: weighted average ${fmtT(g.t)}${over.length ? `, worst ${over[0].name} at ${fmtT(g.byModel[over[0].id])}` : ''}, vs ${fmtT(tk)} takt. Move work out, cut waste, or add a parallel station.`);
+    else if (over.length) warn.push(`${over.map((m) => m.name).join(', ')} put${over.length > 1 ? '' : 's'} ${stLabel(g.name)} at ${fmtT(g.byModel[over[0].id])} vs ${fmtT(tk)} takt, even though the weighted average fits. When ${over.length > 1 ? 'these models' : 'it'} come${over.length > 1 ? '' : 's'} down the line, this station falls behind.`);
   }
   orderWarnings(st, warn);
   showWarnings(warn);
   const gW = groups(st);
-  $('#stTable').innerHTML = `<thead><tr><th>Station</th><th class="n">Processes</th><th class="n">Weighted (${U().label})</th>${S.models.map((m) => `<th class="n">${esc(m.name)} (${U().label})</th>`).join('')}<th class="n">Labor, weighted</th><th class="n">Weighted vs ${ln}</th></tr></thead><tbody>${gW.map((g) => `<tr><td>${esc(stLabel(g.name))}</td><td class="n">${g.els.length}</td><td class="n${tk && g.t > lm + 1e-9 ? ' over' : ''}">${fmtU(g.t, U().dp + 1)}</td>${S.models.map((m) => `<td class="n${tk && g.byModel[m.id] > lm + 1e-9 ? ' over' : ''}">${fmtU(g.byModel[m.id], U().dp + 1)}</td>`).join('')}<td class="n">${fmtU(g.labor, U().dp + 1)}</td><td class="n">${lm ? `<span class="tag ${g.t > lm + 1e-9 ? 'bad' : 'ok'}">${fmt(g.t / lm * 100, 0)}%</span>` : '—'}</td></tr>`).join('')}${tk ? `<tr class="total"><td>Takt</td><td></td><td class="n">${fmtU(tk, U().dp + 1)}</td>${S.models.map(() => `<td class="n">${fmtU(tk, U().dp + 1)}</td>`).join('')}<td></td><td></td></tr>` : ''}${tg ? `<tr class="total"><td>Target cycle time</td><td></td><td class="n">${fmtU(tg, U().dp + 1)}</td>${S.models.map(() => `<td class="n">${fmtU(tg, U().dp + 1)}</td>`).join('')}<td></td><td></td></tr>` : ''}</tbody>`;
+  $('#stTable').innerHTML = `<thead><tr><th>Station</th><th class="n">Processes</th><th class="n">Weighted (${U().label})</th>${S.models.map((m) => `<th class="n">${esc(m.name)} (${U().label})</th>`).join('')}<th class="n">Labor, weighted</th><th class="n">Weighted vs takt</th></tr></thead><tbody>${gW.map((g) => `<tr><td>${esc(stLabel(g.name))}</td><td class="n">${g.els.length}</td><td class="n${tk && g.t > tk + 1e-9 ? ' over' : ''}">${fmtU(g.t, U().dp + 1)}</td>${S.models.map((m) => `<td class="n${tk && g.byModel[m.id] > tk + 1e-9 ? ' over' : ''}">${fmtU(g.byModel[m.id], U().dp + 1)}</td>`).join('')}<td class="n">${fmtU(g.labor, U().dp + 1)}</td><td class="n">${tk ? `<span class="tag ${g.t > tk + 1e-9 ? 'bad' : 'ok'}">${fmt(g.t / tk * 100, 0)}%</span>` : '—'}</td></tr>`).join('')}${tk ? `<tr class="total"><td>Takt</td><td></td><td class="n">${fmtU(tk, U().dp + 1)}</td>${S.models.map(() => `<td class="n">${fmtU(tk, U().dp + 1)}</td>`).join('')}<td></td><td></td></tr>` : ''}</tbody>`;
 }
 function fixedKpis(pd, tk, mid) {
   const slow = pd.slow;
   return [
     kpi(fmtT(pd.build), `Build time per unit, start to finish${mid ? ` for ${modelName(mid)}` : ''}${hrs(pd.build)}`),
     kpi(pd.bays ?? '—', tk ? 'Bays needed: units being built at once (build time ÷ takt)' : 'Bays needed (enter demand on Setup)'),
-    kpi(slow ? fmtT(slow.time) : '—', `Slowest phase${slow ? `: ${stLabel(slow.name)}` : ''}${useTarget() && lim() ? ` (target ${fmtT(lim())})` : ''}`, lim() && slow ? (slow.time <= lim() + 1e-9 ? 'good' : 'bad') : ''),
-    kpi(pd.builders || '—', `People in crews${pd.buildersMin ? ` (fewest that could meet ${limName()}: ${pd.buildersMin})` : ''}`),
+    kpi(slow ? fmtT(slow.time) : '—', `Slowest phase${slow ? `: ${stLabel(slow.name)}` : ''}`, tk && slow ? (slow.time <= tk + 1e-9 ? 'good' : 'bad') : ''),
+    kpi(pd.builders || '—', `People in crews${pd.buildersMin ? ` (fewest that could meet takt: ${pd.buildersMin})` : ''}`),
     kpi(pd.inspLoad == null ? '—' : fmt(pd.inspLoad * 100, 0) + '%', 'of one inspector’s time (checkpoint work ÷ takt)', pd.inspLoad > 1 ? 'bad' : ''),
   ].join('');
 }
 function renderFixed(st, tk) {
-  const lm = lim(), ln = limName(), tg = useTarget() ? targetCT() : null;
   const pd = phaseData(st, BAL_VIEW), pdW = phaseData(st, '');
   $('#chartTitle').textContent = `Phases and checkpoints in build order: ${BAL_VIEW ? modelName(BAL_VIEW) : 'weighted average'}`;
   $('#balKpis').innerHTML = S.elements.length ? fixedKpis(pd, tk, BAL_VIEW) : '';
-  $('#chart').innerHTML = S.elements.length ? fixedChartSvg(pd, st, tk, tg, BAL_VIEW) : '<p class="note">Add processes and their phases on the Processes tab.</p>';
+  $('#chart').innerHTML = S.elements.length ? fixedChartSvg(pd, st, tk, null, BAL_VIEW) : '<p class="note">Add processes and their phases on the Processes tab.</p>';
   const warn = [];
   if (!pdW.gates.length && S.elements.length) warn.push('No checkpoints yet. On the Processes tab, add a process for each check, set its Type to “Checkpoint”, and give it the phase it checks.');
-  if (lm) for (const p of pdW.phases) {
-    const over = S.models.filter((m) => (+m.demand > 0 || !totalDemand()) && p.byModel[m.id] > lm + 1e-9).sort((a, z) => p.byModel[z.id] - p.byModel[a.id]);
+  if (tk) for (const p of pdW.phases) {
+    const over = S.models.filter((m) => (+m.demand > 0 || !totalDemand()) && p.byModel[m.id] > tk + 1e-9).sort((a, z) => p.byModel[z.id] - p.byModel[a.id]);
     const ppl = `${fmt(p.people, 0)} ${p.people === 1 ? 'person' : 'people'}`;
-    if (p.longest.e && p.longest.t > lm + 1e-9) warn.push(`Process ${elNo(p.longest.e.id)} “${p.longest.e.name}” alone takes ${fmtT(p.longest.t)}, longer than the ${fmtT(lm)} ${ln}. More people can’t fix that: split it into smaller processes, or let it run across two takts.`);
-    else if (p.time > lm + 1e-9) warn.push(`${stLabel(p.name)}: a crew of ${ppl} needs ${fmtT(p.time)} per unit (weighted), more than the ${fmtT(lm)} ${ln}, so it can’t move to the next unit on time. It needs ${p.need} people, or move some work to the phase before or after, on the same side of a checkpoint.`);
-    else if (over.length) warn.push(`When ${over.map((m) => m.name).join(', ')} come${over.length > 1 ? '' : 's'} through, the ${stLabel(p.name)} crew (${ppl}) needs ${fmtT(p.byModel[over[0].id])} vs ${fmtT(lm)} ${ln} and will be late to the next unit, even though the average fits.`);
+    if (p.longest.e && p.longest.t > tk + 1e-9) warn.push(`Process ${elNo(p.longest.e.id)} “${p.longest.e.name}” alone takes ${fmtT(p.longest.t)}, longer than the ${fmtT(tk)} takt. More people can’t fix that: split it into smaller processes, or let it run across two takts.`);
+    else if (p.time > tk + 1e-9) warn.push(`${stLabel(p.name)}: a crew of ${ppl} needs ${fmtT(p.time)} per unit (weighted), more than the ${fmtT(tk)} takt, so it can’t move to the next unit on time. It needs ${p.need} people, or move some work to the phase before or after, on the same side of a checkpoint.`);
+    else if (over.length) warn.push(`When ${over.map((m) => m.name).join(', ')} come${over.length > 1 ? '' : 's'} through, the ${stLabel(p.name)} crew (${ppl}) needs ${fmtT(p.byModel[over[0].id])} vs ${fmtT(tk)} takt and will be late to the next unit, even though the average fits.`);
   }
   const unset = pdW.phases.filter((p) => !p.set);
   if (unset.length) warn.push(`Crew size not entered for ${unset.map((p) => stLabel(p.name)).join(', ')}. Using the suggested size for now. Type the real number in the table below.`);
@@ -1877,10 +1829,9 @@ function renderFixed(st, tk) {
   orderWarnings(st, warn);
   showWarnings(warn);
   const u = U().label, dp = U().dp + 1;
-  $('#stTable').innerHTML = `<thead><tr><th>Phase</th><th class="n">Processes</th><th class="n">Crew work per unit, weighted (${u})</th><th class="n">People in crew</th><th class="n">Phase time, weighted (${u})</th>${S.models.map((m) => `<th class="n">${esc(m.name)} (${u})</th>`).join('')}<th class="n">Weighted vs ${ln}</th><th class="n">People to fit ${ln}</th></tr></thead><tbody>${pdW.phases.map((p) => `<tr data-ph="${esc(p.name)}"><td>${esc(stLabel(p.name))}</td><td class="n">${p.els.length}</td><td class="n">${fmtU(p.laborW, dp)}</td><td class="n"><input type="number" min="1" step="1" data-people value="${p.set ? p.people : ''}" placeholder="${fmt(p.sugg, 0)}" aria-label="People in the ${esc(stLabel(p.name))} crew"></td><td class="n${tk && p.time > lm + 1e-9 ? ' over' : ''}">${fmtU(p.time, dp)}</td>${S.models.map((m) => `<td class="n${tk && p.byModel[m.id] > lm + 1e-9 ? ' over' : ''}">${fmtU(p.byModel[m.id], dp)}</td>`).join('')}<td class="n">${lm ? `<span class="tag ${p.time > lm + 1e-9 ? 'bad' : 'ok'}">${fmt(p.time / lm * 100, 0)}%</span>` : '—'}</td><td class="n">${p.need ?? '—'}</td></tr>`).join('')}
+  $('#stTable').innerHTML = `<thead><tr><th>Phase</th><th class="n">Processes</th><th class="n">Crew work per unit, weighted (${u})</th><th class="n">People in crew</th><th class="n">Phase time, weighted (${u})</th>${S.models.map((m) => `<th class="n">${esc(m.name)} (${u})</th>`).join('')}<th class="n">Weighted vs takt</th><th class="n">People to fit takt</th></tr></thead><tbody>${pdW.phases.map((p) => `<tr data-ph="${esc(p.name)}"><td>${esc(stLabel(p.name))}</td><td class="n">${p.els.length}</td><td class="n">${fmtU(p.laborW, dp)}</td><td class="n"><input type="number" min="1" step="1" data-people value="${p.set ? p.people : ''}" placeholder="${fmt(p.sugg, 0)}" aria-label="People in the ${esc(stLabel(p.name))} crew"></td><td class="n${tk && p.time > tk + 1e-9 ? ' over' : ''}">${fmtU(p.time, dp)}</td>${S.models.map((m) => `<td class="n${tk && p.byModel[m.id] > tk + 1e-9 ? ' over' : ''}">${fmtU(p.byModel[m.id], dp)}</td>`).join('')}<td class="n">${tk ? `<span class="tag ${p.time > tk + 1e-9 ? 'bad' : 'ok'}">${fmt(p.time / tk * 100, 0)}%</span>` : '—'}</td><td class="n">${p.need ?? '—'}</td></tr>`).join('')}
     <tr class="total"><td>All phases</td><td class="n">${pdW.phases.reduce((a, p) => a + p.els.length, 0)}</td><td class="n">${fmtU(pdW.phases.reduce((a, p) => a + p.laborW, 0), dp)}</td><td class="n">${pdW.builders}</td><td class="n">${fmtU(pdW.phases.reduce((a, p) => a + p.time, 0), dp)}</td>${S.models.map((m) => `<td class="n">${fmtU(pdW.phases.reduce((a, p) => a + p.byModel[m.id], 0), dp)}</td>`).join('')}<td></td><td class="n">${pdW.buildersMin ?? ''}</td></tr>
-    ${tk ? `<tr><td>Takt</td><td></td><td></td><td></td><td class="n">${fmtU(tk, dp)}</td>${S.models.map(() => `<td class="n">${fmtU(tk, dp)}</td>`).join('')}<td></td><td></td></tr>` : ''}
-    ${tg ? `<tr><td>Target cycle time</td><td></td><td></td><td></td><td class="n">${fmtU(tg, dp)}</td>${S.models.map(() => `<td class="n">${fmtU(tg, dp)}</td>`).join('')}<td></td><td></td></tr>` : ''}</tbody>`;
+    ${tk ? `<tr><td>Takt</td><td></td><td></td><td></td><td class="n">${fmtU(tk, dp)}</td>${S.models.map(() => `<td class="n">${fmtU(tk, dp)}</td>`).join('')}<td></td><td></td></tr>` : ''}</tbody>`;
   $('#gateTable').innerHTML = pdW.gates.length ? `<thead><tr><th>Checkpoint</th><th>After phase</th><th class="n">Check time, weighted (${u})</th><th class="n">Wait for inspector, avg per unit (${u})</th><th class="n">Rework found, avg per unit (${u})</th><th class="n">Adds to build time (${u})</th></tr></thead><tbody>${pdW.gates.map((g) => `<tr><td>${g.checks.map((e) => `${elNo(e.id)}. ${esc(e.name || '(unnamed)')}`).join('<br>')}</td><td>${esc(stLabel(g.after))}</td><td class="n">${fmtU(g.t, dp)}</td><td class="n">${fmtU(g.wait, dp)}</td><td class="n">${fmtU(g.rework, dp)}</td><td class="n"><b>${fmtU(g.adds, dp)}</b></td></tr>`).join('')}
     <tr class="total"><td>All checkpoints</td><td></td><td class="n">${fmtU(pdW.gates.reduce((a, g) => a + g.t, 0), dp)}</td><td class="n">${fmtU(pdW.gates.reduce((a, g) => a + g.wait, 0), dp)}</td><td class="n">${fmtU(pdW.gates.reduce((a, g) => a + g.rework, 0), dp)}</td><td class="n">${fmtU(pdW.gates.reduce((a, g) => a + g.adds, 0), dp)}</td></tr></tbody>`
     : '<tbody><tr><td class="note">No checkpoints yet. Set a process’s Type to “Checkpoint” on the Processes tab.</td></tr></tbody>';
@@ -1921,7 +1872,7 @@ function rpw(ids, pu, target, label, k0) {
   return { assign, last, loop };
 }
 function suggest() {
-  const tk = lim(), target = S.balanceTarget > 0 ? S.balanceTarget : tk;
+  const tk = takt(), target = S.balanceTarget > 0 ? S.balanceTarget : tk;
   if (!target) { toast('Enter demand on the Setup tab, or type a target here.'); return; }
   const st = allStats();
   if (!S.elements.length) { toast('Add processes first.'); return; }
@@ -1961,11 +1912,11 @@ function renderProp() {
   let kp, chart;
   if (PROP.fixed) {
     const pd = phaseData(st, '', PROP.assign, PROP.crewSize);
-    for (const p of pd.phases) for (const m of S.models) if (lim() && p.byModel[m.id] > lim() + 1e-9) worst.push(`${m.name} in ${p.name}: ${fmtT(p.byModel[m.id])}`);
+    for (const p of pd.phases) for (const m of S.models) if (tk && p.byModel[m.id] > tk + 1e-9) worst.push(`${m.name} in ${p.name}: ${fmtT(p.byModel[m.id])}`);
     kp = fixedKpis(pd, tk, ''); chart = fixedChartSvg(pd, st, tk, PROP.target, '');
   } else {
     const gs = groups(st, PROP.assign, '');
-    for (const g of gs) for (const m of S.models) if (lim() && g.byModel[m.id] > lim() + 1e-9) worst.push(`${m.name} at ${g.name}: ${fmtT(g.byModel[m.id])}`);
+    for (const g of gs) for (const m of S.models) if (tk && g.byModel[m.id] > tk + 1e-9) worst.push(`${m.name} at ${g.name}: ${fmtT(g.byModel[m.id])}`);
     kp = balanceKpis(gs, tk, ''); chart = chartSvg(gs, st, tk, PROP.target, '');
   }
   const w = PROP.fixed ? 'phases' : 'stations', W = PROP.fixed ? 'Phase' : 'Station';
@@ -1974,7 +1925,7 @@ function renderProp() {
     ${PROP.fixed ? `<p class="note">Every crew has ${fmt(PROP.crewSize, 0)} ${PROP.crewSize === 1 ? 'person' : 'people'}. Each checkpoint stays at the end of the phase before it.</p>` : ''}
     <div class="kpis">${kp}</div>
     <div class="chart">${chart}</div>
-    ${worst.length ? `<p class="callout warn">Even with this split, some models are over the ${limName()}: ${esc(worst.slice(0, 6).join('; '))}${worst.length > 6 ? '…' : ''}.</p>` : ''}
+    ${worst.length ? `<p class="callout warn">Even with this split, some models are over takt: ${esc(worst.slice(0, 6).join('; '))}${worst.length > 6 ? '…' : ''}.</p>` : ''}
     <div class="row"><button class="btn primary" id="propUse" type="button">Use this split (renames ${w} to ${W} 1, 2…)</button><button class="btn" id="propClose" type="button">Discard</button></div>
     <p class="note">${W}s get new names (${W} 1, 2…). Download the Excel workbook on the Files tab first if you want a copy of today’s split.</p>`;
 }
@@ -2261,8 +2212,6 @@ function rowsSummary() {
     ...S.models.map((m) => [`${m.name}, units per ${periodName()}`, +m.demand || 0]),
     [`Total units per ${periodName()}`, totalDemand()], ['Work days per week', d.per === 'week' ? d.days ?? '' : ''], ['Shifts per day', d.shifts ?? ''], ['Minutes per shift', d.shiftMin ?? ''], ['Breaks and meetings (min per shift)', d.breakMin ?? ''],
     [`Available hours per ${periodName()}`, avail ? +(avail / 3600).toFixed(2) : ''],
-    ['Efficiency %', effic()], [`Target cycle time (${u})`, targetCT() ? rd(targetCT()) : ''],
-    ['Stations (people) needed, work content ÷ target cycle time', targetCT() && tt.labor > 0 ? +((tt.labor - (FIXED() ? tt.check : 0)) / targetCT()).toFixed(2) : ''],
     [],
     ['Baseline (before number)'],
     ['What was measured', b.metric], ['Before', b.before ?? ''], ['After', b.after ?? ''], ['Unit', b.unit], ['Date measured', b.date], ['How measured', b.how],
