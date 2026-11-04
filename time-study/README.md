@@ -20,6 +20,7 @@ All sample numbers and model names are made up. Company data never goes in this 
    - study details and the "before" number (baseline)
    - **models and demand**, for example 6 / 4 / 2 units per week. The mix is worked out for you, and takt time uses the total of all models.
    - **how the line works**: flow line or fixed position, and whether work on a unit stops at a checkpoint until it's signed off (if you're not sure, choose "stops")
+   - **efficiency %**: below 100 it sets a target cycle time under takt, laid out like a planning sheet (units per day, available hours, takt, target cycle time, work content, stations needed). Use either efficiency or allowances, not both, or the slack is counted twice; the page warns and can set allowances to 0.
    - the constants used everywhere: time unit, default performance rating with its written reason and a Westinghouse calculator, PF&D allowances, and confidence and accuracy
 2. **Processes & times:**
    - One row per process with its station, type, crew, **Qty per model** (0 = not used, 1 = once, 2 = twice), Every (only for occasional work, like a setup every 4 units) and "comes after".
@@ -78,6 +79,8 @@ Studies saved before layouts existed open as a flow line. Studies saved before m
 | Build time (fixed position) | Σ phase times + Σ checkpoints (check + average wait, if work stops) + average rework |
 | Bays needed | build time ÷ takt, rounded up |
 | Inspector load | checkpoint work per unit ÷ takt |
+| Target cycle time | takt × efficiency % (efficiency 100% = not used) |
+| Stations (people) needed | work content per unit ÷ target cycle time, rounded up |
 | Minimum operators | weighted labor per unit ÷ takt, rounded up |
 | Balance efficiency | total work ÷ (stations × slowest station) |
 
