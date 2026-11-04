@@ -1621,7 +1621,7 @@ function renderResults() {
     { k: 'name', h: 'Process', c: (e, s, i) => {
       const rr = ratingReason(e);
       // a process with its own rating gets a reason box under its name
-      const reasonBox = !s.machine && rr.own ? `<input type="text" class="reason${rr.missing ? ' need' : ''}" data-f="ratingNote" value="${esc(e.ratingNote || '')}" placeholder="${esc(rr.missing ? `Why ${fmt(e.rating, 0)}%? (needed)` : `Why ${fmt(e.rating, 0)}%?`)}" aria-label="Reason for the rating of process ${i}">` : '';
+      const reasonBox = !s.machine && rr.own && e.rating !== 100 ? `<input type="text" class="reason${rr.missing ? ' need' : ''}" data-f="ratingNote" value="${esc(e.ratingNote || '')}" placeholder="${esc(rr.missing ? `Why ${fmt(e.rating, 0)}%? (needed)` : `Why ${fmt(e.rating, 0)}%?`)}" aria-label="Reason for the rating of process ${i}">` : '';
       return `<td class="pname"><b>${esc(e.name || '(unnamed)')}</b>${s.sameWork ? `<span class="flagline" title="Different models or occurrences may be different work">Same work? ${esc(s.sameWork.text)}. Consider splitting.</span>` : ''}${reasonBox}</td>`;
     } },
     { k: 'type', h: 'Type', c: (e) => `<td>${TYPES[e.type]}</td>` },
