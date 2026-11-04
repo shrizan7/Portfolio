@@ -106,6 +106,14 @@ tr.grp td { background: var(--sub); font-weight: 650; padding-top: 8px; }
 .grid .w-mod { width: 92px; font-size: 12px; padding: 4px 5px; }
 .grid th.qh { background: var(--sub); text-align: center; }
 .grid .tools { white-space: nowrap; }
+.grid td.num { white-space: nowrap; position: sticky; left: 0; z-index: 1; background: var(--panel); }
+#procTable thead th:first-child { position: sticky; left: 0; z-index: 3; }
+.handle { display: inline-block; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; color: var(--muted); padding: 4px 4px 4px 0; font-size: 15px; line-height: 1; }
+.handle:hover { color: var(--ink); }
+body.dragmode, body.dragmode * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+#procTable tr.dragging td { opacity: .45; }
+#procTable tr.drop-before td { box-shadow: inset 0 3px 0 var(--accent); }
+#procTable tr.drop-after td { box-shadow: inset 0 -3px 0 var(--accent); }
 .grid .tools .btn { padding: 5px 7px; }
 .obsh { display: flex; flex-direction: column; gap: 2px; }
 .obsh .row { gap: 2px; flex-wrap: nowrap; }
@@ -335,7 +343,7 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
   <section class="panel" id="tab-proc" hidden>
     <div class="card">
       <div class="row between"><h2>Processes and observed times</h2><span class="note" id="procCount"></span></div>
-      <p class="note">One row per process. <b>Qty</b> says how many times the process is done on one unit of each model: 0 = not used, 1 = once, 2 = twice. <b>Every</b> is only for occasional work, such as a setup done once every 4 units. Each <b>Obs</b> column is one unit you watched: put its serial number and model at the top, then type how long the process took, in <b id="unitName">minutes</b>. If it was done twice on that unit, type both times separated by a semicolon, like <code>33; 41</code>. A <code>*</code> after a time leaves it out of the averages.</p>
+      <p class="note">One row per process. <b>Qty</b> says how many times the process is done on one unit of each model: 0 = not used, 1 = once, 2 = twice. <b>Every</b> is only for occasional work, such as a setup done once every 4 units. Each <b>Obs</b> column is one unit you watched: put its serial number and model at the top, then type how long the process took, in <b id="unitName">minutes</b>. If it was done twice on that unit, type both times separated by a semicolon, like <code>33; 41</code>. A <code>*</code> after a time leaves it out of the averages. To change the order, drag a row by its <b>⠿</b> handle (or use ↑ ↓). Press <b>＋</b> on a row to add a new process right below it.</p>
       <div class="row end noprint">
         <label class="field" style="width:200px"><span class="showSt">Show station</span><select id="fStation"></select></label>
         <label class="field" style="width:220px"><span>Search</span><input type="text" id="fSearch" placeholder="Process name"></label>
@@ -1077,7 +1085,7 @@ function renderProc() {
   const rows = vis.map((el) => {
     const i = elNo(el.id) - 1;
     return `<tr data-id="${esc(el.id)}">
-      <td class="mono">${i + 1}</td>
+      <td class="mono num">${locked ? '' : `<span class="handle" data-drag title="Drag to move this process" aria-hidden="true">⠿</span>`}${i + 1}</td>
       <td><input class="w-st" list="stationNames" data-f="station" value="${esc(el.station)}" aria-label="Station for process ${i + 1}"></td>
       <td><input class="w-name" data-f="name" value="${esc(el.name)}" placeholder="What is done" aria-label="Process ${i + 1} name"></td>
       <td><select class="w-type" data-f="type" aria-label="Type of process ${i + 1}">${Object.entries(TYPES).map(([k, v]) => `<option value="${k}"${el.type === k ? ' selected' : ''}>${v}</option>`).join('')}</select></td>
@@ -1089,6 +1097,7 @@ function renderProc() {
       <td class="tools">
         <button class="btn" type="button" data-act="up" aria-label="Move process ${i + 1} up"${locked || i === 0 ? ' disabled' : ''}>↑</button>
         <button class="btn" type="button" data-act="down" aria-label="Move process ${i + 1} down"${locked || i === S.elements.length - 1 ? ' disabled' : ''}>↓</button>
+        <button class="btn" type="button" data-act="ins" title="Add a new process below this one" aria-label="Add a new process below process ${i + 1}"${locked ? ' disabled' : ''}>＋</button>
         <button class="btn danger" type="button" data-act="del" aria-label="Delete process ${i + 1}"${locked ? ' disabled' : ''}>✕</button>
       </td></tr>`;
   }).join('');
@@ -1157,6 +1166,15 @@ $('#procTable').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-act]'); if (!b || T.on) return;
   const i = S.elements.findIndex((x) => x.id === b.closest('tr').dataset.id); if (i < 0) return;
   const el = S.elements[i];
+  if (b.dataset.act === 'ins') {
+    const ne = { id: newId('e'), station: el.station, name: '', type: 'manual', crew: 1, every: 1, after: [el.id], rating: null, ratingNote: '', allow: null, qty: {} };
+    S.elements.splice(i + 1, 0, ne);
+    F.q = '';
+    persist(); renderProc(); renderHeader();
+    $(`#procTable tr[data-id="${CSS.escape(ne.id)}"] input[data-f="name"]`)?.focus();
+    toast(`New process ${i + 2} added below ${i + 1}, in ${stLabel(el.station)}. Type its name.`);
+    return;
+  }
   if (b.dataset.act === 'up' && i > 0) [S.elements[i - 1], S.elements[i]] = [S.elements[i], S.elements[i - 1]];
   if (b.dataset.act === 'down' && i < S.elements.length - 1) [S.elements[i + 1], S.elements[i]] = [S.elements[i], S.elements[i + 1]];
   if (b.dataset.act === 'del') {
@@ -1172,6 +1190,68 @@ $('#procTable').addEventListener('click', (e) => {
   }
   persist(); renderProc(); renderHeader();
 });
+
+/* ---- Drag a row to a new place ---- */
+let DRAG = null;
+function dragClear() {
+  for (const r of $$('#procTable tr.drop-before, #procTable tr.drop-after')) r.classList.remove('drop-before', 'drop-after');
+}
+function dragEnd(apply) {
+  if (!DRAG) return;
+  const d = DRAG; DRAG = null;
+  cancelAnimationFrame(d.raf);
+  dragClear(); d.row.classList.remove('dragging'); document.body.classList.remove('dragmode');
+  if (!apply || !d.target || d.target === d.id) return;
+  const from = S.elements.findIndex((x) => x.id === d.id); if (from < 0) return;
+  const [m] = S.elements.splice(from, 1);
+  let to = S.elements.findIndex((x) => x.id === d.target);
+  if (to < 0) { S.elements.splice(from, 0, m); return; }
+  if (!d.before) to++;
+  S.elements.splice(to, 0, m);
+  persist(); renderProc(); renderHeader();
+  const n = to + 1, above = S.elements[to - 1], below = S.elements[to + 1];
+  // dropped among another phase's rows: offer to move it into that phase too
+  const nb = [above, below].filter(Boolean).map((x) => x.station);
+  const other = nb.length && nb.every((x) => x === nb[0]) && nb[0] !== m.station ? nb[0] : null;
+  if (other != null) ask(`Moved to number ${n}, between processes in ${stLabel(other)}. Put it in ${stLabel(other)} too? (It is in ${stLabel(m.station)} now.)`, `Move to ${stLabel(other)}`, () => { m.station = other; persist(); renderProc(); toast(`Process ${n} is now in ${stLabel(other)}.`); });
+  else toast(`Moved to number ${n}. “Comes after” numbers were updated to match.`);
+}
+function dragTrack() {
+  if (!DRAG) return;
+  const box = $('#procTable').closest('.tall'), r = box.getBoundingClientRect(), y = DRAG.y;
+  // scroll the table while holding near its top or bottom edge
+  if (y < r.top + 48) box.scrollTop -= Math.ceil((r.top + 48 - y) / 4);
+  else if (y > r.bottom - 48) box.scrollTop += Math.ceil((y - (r.bottom - 48)) / 4);
+  const x = Math.min(Math.max(DRAG.x, r.left + 4), r.right - 4), yy = Math.min(Math.max(y, r.top + 4), r.bottom - 4);
+  let tr = document.elementFromPoint(x, yy)?.closest('#procTable tbody tr[data-id]');
+  let edge = null;
+  if (!tr) { // over the header or below the last row: snap to the first or last row
+    const rows = $$('#procTable tbody tr[data-id]');
+    if (rows.length && yy < rows[0].getBoundingClientRect().bottom) { tr = rows[0]; edge = 'before'; }
+    else if (rows.length && yy > rows[rows.length - 1].getBoundingClientRect().top) { tr = rows[rows.length - 1]; edge = 'after'; }
+  }
+  dragClear();
+  if (tr && tr !== DRAG.row) {
+    const rr = tr.getBoundingClientRect();
+    DRAG.target = tr.dataset.id; DRAG.before = edge ? edge === 'before' : yy < rr.top + rr.height / 2;
+    tr.classList.add(DRAG.before ? 'drop-before' : 'drop-after');
+  } else if (tr === DRAG.row) DRAG.target = null;
+  DRAG.raf = requestAnimationFrame(dragTrack);
+}
+$('#procTable').addEventListener('pointerdown', (e) => {
+  const h = e.target.closest('[data-drag]'); if (!h || T.on || DRAG) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  e.preventDefault();
+  const row = h.closest('tr[data-id]');
+  try { h.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  DRAG = { id: row.dataset.id, row, target: null, before: true, x: e.clientX, y: e.clientY, raf: 0 };
+  row.classList.add('dragging'); document.body.classList.add('dragmode');
+  DRAG.raf = requestAnimationFrame(dragTrack);
+});
+document.addEventListener('pointermove', (e) => { if (DRAG) { DRAG.x = e.clientX; DRAG.y = e.clientY; } });
+document.addEventListener('pointerup', () => dragEnd(true));
+document.addEventListener('pointercancel', () => dragEnd(false));
+document.addEventListener('keydown', (e) => { if (DRAG && e.key === 'Escape') dragEnd(false); });
 
 /* ---- Paste from Excel ---- */
 const HEAD = [

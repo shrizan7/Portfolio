@@ -24,6 +24,7 @@ All sample numbers and model names are made up. Company data never goes in this 
 2. **Processes & times:**
    - One row per process with its station, type, crew, **Qty per model** (0 = not used, 1 = once, 2 = twice), Every (only for occasional work, like a setup every 4 units) and "comes after".
    - Each Obs column is one unit you watched, with its serial number and model. If a process was done twice on that unit, type both times in one cell: `33; 41`.
+   - Change the order by dragging a row by its ⠿ handle, or with ↑ ↓. Press ＋ on a row to add a new process right below it.
    - Paste hundreds of rows from Excel, filter by station, search, or use the stopwatch, which asks for a repeated process each time it happens.
 3. **Standard times:**
    - labor and time per unit for each model, plus the weighted average across the mix
