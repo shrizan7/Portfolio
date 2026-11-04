@@ -28,7 +28,7 @@ All sample numbers and model names are made up. Company data never goes in this 
    - Paste hundreds of rows from Excel, filter by station, search, or use the stopwatch, which asks for a repeated process each time it happens. Its **Pause** button stops the process clock while work is held up (parts, crane, inspector) and logs the paused time on the Delays tab. **Flag** leaves a whole time out of the averages.
 3. **Standard times:**
    - labor and time per unit for each model, plus the weighted average across the mix
-   - for each process, grouped by station: observations, average, rating %, allowance %, standard and status. If a process happens more or less than once per unit (Qty or Every), its time per unit is shown under the standard. Tick **Show all columns** for the full breakdown: kept, spread, normal, every, weighted per unit, crew and labor.
+   - for each process, grouped by station: #, station, process, type, average observed, rating %, normal time, allowance %, standard per occurrence, crew, weighted labor per unit and a **Notes** box. More columns can be added with the buttons above the table: observations (tap a time to change it), kept, spread, every, weighted time per unit and status.
    - tap any observed time to change it, leave it out of the average, or delete it
    - **Preliminary** until a process has enough observations
    - **Same work?** when two models, or the 1st and 2nd time on a unit, look like different work

@@ -117,7 +117,8 @@ body.dragmode, body.dragmode * { cursor: grabbing !important; user-select: none;
 .grid .tools .btn { padding: 5px 7px; }
 .obsh { display: flex; flex-direction: column; gap: 2px; }
 .obsh .row { gap: 2px; flex-wrap: nowrap; }
-.res td:nth-child(2) { min-width: 190px; }
+.res td.pname { min-width: 200px; }
+.res thead th { white-space: normal; font-family: var(--font); min-width: 56px; max-width: 120px; line-height: 1.25; }
 .res input.reason { display: block; width: 100%; max-width: 260px; margin-top: 4px; text-align: left; font-family: var(--font); }
 .res input.need { border-color: var(--warn); background: var(--warn-bg); }
 .res input { width: 64px; padding: 5px 6px; font-size: 13px; text-align: right; }
@@ -193,6 +194,10 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
 
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 6px; font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgba(0,0,0,.25); z-index: 10; }
 .toastbtn { margin-left: 10px; font: 700 14px var(--font); color: var(--paper); background: none; border: 1px solid currentColor; border-radius: 4px; padding: 3px 9px; cursor: pointer; }
+.colpick { gap: 6px; }
+.colbtn { font: 500 12px var(--font); padding: 4px 9px; border-radius: 99px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+.colbtn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.res input.pnote { width: 200px; text-align: left; font-family: var(--font); }
 .print-head { display: none; }
 .askbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--warn-bg); border-top: 2px solid var(--warn);
   padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
@@ -396,12 +401,11 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
       <div class="row between">
         <h2>Standard time per process</h2>
         <div class="row end noprint">
-          <label class="row small" style="padding-bottom:8px"><input type="checkbox" id="resAll"> Show all columns</label>
           <label class="field" style="width:200px"><span class="showSt">Show station</span><select id="rStation"></select></label>
         </div>
       </div>
-      <p class="note" id="resNoteShort">Tap an observation to change it, leave it out, or delete it. Orange times are more than 30% away from that process’s middle value. <b>Standard</b> = Average × Rating % × (1 + Allowance %), for doing the process once. If a process happens more or less than once per unit, the time per unit is shown under it. <b>Preliminary</b> means it doesn’t have enough observations yet. All times are in <b class="unitName">minutes</b>.</p>
-      <p class="note" id="resNoteLong" hidden>Tap an observation to change it, leave it out, or delete it. A small number after a time marks the 2nd or 3rd time on that unit. Orange times are more than 30% away from that process’s middle value. <b>Standard</b> is per occurrence (one panel, one weld). <b>Per unit</b> is the weighted average across the mix. <b>Preliminary</b> means it doesn’t have enough observations yet. All times are in <b class="unitName">minutes</b>.</p>
+      <p class="note">One row per process. <b>Standard per occurrence</b> = Average × Rating % × (1 + Allowance %), for doing the process once. <b>Weighted labor per unit</b> = what it adds to one average unit × crew. Type a note for any process in the Notes column. Add more columns with the buttons below. All times are in <b class="unitName">minutes</b>.</p>
+      <div class="row noprint colpick"><span class="small muted">Add columns:</span><span id="colPick" class="row"></span></div>
       <div class="tall"><table class="res" id="resTable"></table></div>
     </div>
     <div class="card">
@@ -598,8 +602,9 @@ let S = load() || sampleLong(); // first visit opens on the made-up sample; “N
 let tab = 'setup';
 const F = { station: '*', q: '' };
 let BAL_VIEW = '';
-let RES_ALL = false;
-try { RES_ALL = localStorage.getItem(KEY + ':allcols') === '1'; } catch (e) { /* ignore */ }
+// Extra columns the viewer turned on in the Standard times table (remembered in this browser)
+let RES_COLS = new Set();
+try { RES_COLS = new Set(JSON.parse(localStorage.getItem(KEY + ':cols') || '[]')); } catch (e) { /* ignore */ }
 
 function load() {
   try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); return s && s.format === 'ie-time-study' ? normalize(s) : null; } catch (e) { return null; }
@@ -644,7 +649,7 @@ function normalize(s) {
     return {
       id: String(e.id || newId('e')), station, name: String(e.name || ''), type: TYPES[e.type] ? e.type : 'manual',
       crew: +e.crew > 0 ? +e.crew : 1, every: +e.every > 0 ? +e.every : 1, after: Array.isArray(e.after) ? e.after.map(String) : [],
-      rating: numOrNull(e.rating), ratingNote: String(e.ratingNote || ''), allow: numOrNull(e.allow), qty,
+      rating: numOrNull(e.rating), ratingNote: String(e.ratingNote || ''), allow: numOrNull(e.allow), qty, note: String(e.note || ''),
     };
   });
   out.cycles = (Array.isArray(s.cycles) ? s.cycles : []).map((c) => {
@@ -1139,7 +1144,13 @@ function renderProc() {
 }
 $('#fStation').addEventListener('change', (e) => { F.station = e.target.value; renderProc(); });
 $('#rStation').addEventListener('change', (e) => { F.station = e.target.value; renderResults(); });
-$('#resAll').addEventListener('change', (e) => { RES_ALL = e.target.checked; try { localStorage.setItem(KEY + ':allcols', RES_ALL ? '1' : '0'); } catch (err) { /* ignore */ } renderResults(); });
+$('#colPick').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-col]'); if (!b) return;
+  const k = b.dataset.col;
+  if (RES_COLS.has(k)) RES_COLS.delete(k); else RES_COLS.add(k);
+  try { localStorage.setItem(KEY + ':cols', JSON.stringify([...RES_COLS])); } catch (err) { /* ignore */ }
+  renderResults();
+});
 $('#fSearch').addEventListener('input', (e) => { F.q = e.target.value; renderProc(); $('#fSearch').focus(); });
 $('#addProc').addEventListener('click', () => {
   if (T.on) return;
@@ -1305,6 +1316,7 @@ const HEAD = [
   ['rating', /^(own )?rating( %)?$/i],
   ['ratingNote', /^rating reason$/i],
   ['allow', /^(own )?allowance( %)?$/i],
+  ['note', /^notes?$/i],
   ['skip', /^(#|no\.?|seq|item|line|model|status)$/i],
 ];
 const SKIP_HEAD = /^(average|avg|mean|normal|standard|std|rating|allowance|per unit|labor|kept|spread|cv|readings needed|observations needed|enough|weighted|time per unit|same work)/i;
@@ -1362,7 +1374,7 @@ function pasteRun(confirmed) {
     const name = get('name');
     if (!name && !obsIdx.some((i) => r[i])) continue;
     const prev = added.length ? added[added.length - 1] : S.elements[base - 1];
-    const el = { id: newId('e'), station: get('station') || (cols.includes('station') ? '' : (prev ? prev.station : '')), name, type: cols.includes('type') ? parseType(get('type')) : 'manual', crew: +get('crew') > 0 ? +get('crew') : 1, every: +get('every') > 0 ? +get('every') : 1, after: prev ? [prev.id] : [], rating: +get('rating') > 0 ? +get('rating') : null, ratingNote: get('ratingNote'), allow: get('allow') !== '' && +get('allow') >= 0 ? +get('allow') : null, qty: {} };
+    const el = { id: newId('e'), station: get('station') || (cols.includes('station') ? '' : (prev ? prev.station : '')), name, type: cols.includes('type') ? parseType(get('type')) : 'manual', crew: +get('crew') > 0 ? +get('crew') : 1, every: +get('every') > 0 ? +get('every') : 1, after: prev ? [prev.id] : [], rating: +get('rating') > 0 ? +get('rating') : null, ratingNote: get('ratingNote'), allow: get('allow') !== '' && +get('allow') >= 0 ? +get('allow') : null, qty: {}, note: get('note') };
     for (const q of qtyCols) { const v = parseFloat(r[q.i]); if (isFinite(v) && v >= 0) el.qty[q.m.id] = v; }
     obsIdx.forEach((ci, k) => {
       const res = parseCell(r[ci]);
@@ -1601,66 +1613,51 @@ function renderResults() {
   }).join('')}<tr class="total"><td>Weighted average (mix)</td><td class="n">${fmt(totalDemand(), 0)}</td><td class="n">${totalDemand() > 0 ? '100%' : ''}</td><td class="n">${fmtT(tt.total)}</td><td class="n">${fmtT(tt.labor)}</td>${fx ? `<td class="n">${fmtT(pdW.build)}</td>` : ''}<td></td><td></td></tr></tbody>`;
 
   if (!S.elements.length) { $('#resTable').innerHTML = '<tr><td class="note">No processes yet.</td></tr>'; return; }
-  const u = U().label, short = (n) => (n.length > 8 ? n.slice(0, 7) + '…' : n);
-  const all = RES_ALL;
-  $('#resAll').checked = all; $('#resNoteShort').hidden = all; $('#resNoteLong').hidden = !all;
-  const headShort = `<tr><th>#</th><th>Process</th><th>Observations (${u})</th><th class="n">Average</th><th class="n">Rating %</th><th class="n">Allow %</th><th class="n">Standard</th><th>Status</th></tr>`;
-  const head = !all ? headShort : `<tr><th>#</th><th>Process</th><th>Observations (${u})</th><th class="n">Kept</th><th class="n">Average</th><th class="n">Spread</th><th class="n">Rating %</th><th class="n">Normal</th><th class="n">Allow %</th><th class="n">Standard<br>per occurrence</th><th class="n">Every</th><th class="n">Per unit<br>(weighted)</th><th class="n">Crew</th><th class="n">Labor</th><th>Status</th></tr>`;
-  const row = (e) => {
-    const s = st.get(e.id), i = elNo(e.id);
-    const chips = s.all.map((r) => {
+  const u = U().label, dp = U().dp + 1;
+  // Columns in order. extra = off unless picked with the buttons above the table. sub = shown on total rows.
+  const COLS = [
+    { k: 'no', h: '#', c: (e, s, i) => `<td class="mono">${i}</td>` },
+    { k: 'station', h: Word(), c: (e) => `<td>${esc(stLabel(e.station))}</td>` },
+    { k: 'name', h: 'Process', c: (e, s, i) => {
+      const rr = ratingReason(e);
+      // a process with its own rating gets a reason box under its name
+      const reasonBox = !s.machine && rr.own ? `<input type="text" class="reason${rr.missing ? ' need' : ''}" data-f="ratingNote" value="${esc(e.ratingNote || '')}" placeholder="${esc(rr.missing ? `Why ${fmt(e.rating, 0)}%? (needed)` : `Why ${fmt(e.rating, 0)}%?`)}" aria-label="Reason for the rating of process ${i}">` : '';
+      return `<td class="pname"><b>${esc(e.name || '(unnamed)')}</b>${s.sameWork ? `<span class="flagline" title="Different models or occurrences may be different work">Same work? ${esc(s.sameWork.text)}. Consider splitting.</span>` : ''}${reasonBox}</td>`;
+    } },
+    { k: 'type', h: 'Type', c: (e) => `<td>${TYPES[e.type]}</td>` },
+    { k: 'obs', h: `Observations (${u})`, extra: 'Observations', c: (e, s) => `<td><div class="chips">${s.all.map((r) => {
       const sus = !r.off && s.n >= 3 && s.med && Math.abs(r.v - s.med) / s.med > 0.3;
       const c = S.cycles.find((x) => x.id === r.cy), lab = c ? obsLabel(c, S.cycles.indexOf(c)) : '';
       return `<button type="button" class="chip${r.off ? ' off' : ''}${sus ? ' sus' : ''}" data-cy="${esc(r.cy)}" data-el="${esc(e.id)}" data-occ="${r.occ}" title="${esc(`${lab} · ${modelName(r.model)}${r.occ ? ` · ${ord(r.occ + 1)} time` : ''}`)}. ${r.off ? 'Left out. Tap to change it or use it again.' : 'Tap to change it or leave it out.'}">${fmtU(r.v)}${r.occ ? `<sup>${r.occ + 1}</sup>` : ''}</button>`;
-    }).join('') || '<span class="note">none yet</span>';
-    const rr = ratingReason(e);
-    // Only a process with its own rating gets a reason box, under its name
-    const reasonBox = !s.machine && rr.own ? `<input type="text" class="reason${rr.missing ? ' need' : ''}" data-f="ratingNote" value="${esc(e.ratingNote || '')}" placeholder="${esc(rr.missing ? `Why ${fmt(e.rating, 0)}%? (needed)` : `Why ${fmt(e.rating, 0)}%?`)}" aria-label="Reason for the rating of process ${i}">` : '';
-    const ratingCell = `<td class="n">${s.machine ? '<span class="note" title="Machine-paced: no rating">100</span>' : `<input type="number" min="1" step="any" data-f="rating" value="${e.rating ?? ''}" placeholder="${fmt(defRating(), 0)}" aria-label="Rating for process ${i}">`}</td>`;
-    const allowCell = `<td class="n"><input type="number" min="0" step="any" data-f="allow" value="${e.allow ?? ''}" placeholder="${s.machine ? '0' : fmt(allowTotal(), 0)}" aria-label="Allowance for process ${i}"></td>`;
-    const nameCell = `<td><b>${esc(e.name || '(unnamed)')}</b><br><span class="note">${TYPES[e.type]}</span>${s.sameWork ? `<span class="flagline" title="Different models or occurrences may be different work">Same work? ${esc(s.sameWork.text)}. Consider splitting.</span>` : ''}${reasonBox}</td>`;
-    if (!all) {
-      // per unit differs from once (Qty or Every not 1): show it small under the standard
-      const differs = s.std != null && s.perUnit != null && Math.abs(s.perUnit - s.std) > Math.max(1e-9, s.std * 0.005);
-      return `<tr data-el="${esc(e.id)}">
-      <td class="mono">${i}</td>
-      ${nameCell}
-      <td><div class="chips">${chips}</div></td>
-      <td class="n">${fmtU(s.mean, U().dp + 1)}</td>
-      ${ratingCell}
-      ${allowCell}
-      <td class="n"><b>${fmtU(s.std, U().dp + 1)}</b>${differs ? `<br><span class="note" title="This process happens more or less than once per unit (Qty or Every), so it adds this much to an average unit">${fmtU(s.perUnit, U().dp + 1)} per unit</span>` : ''}</td>
-      <td>${statusTag(s)}</td></tr>`;
-    }
-    return `<tr data-el="${esc(e.id)}">
-      <td class="mono">${i}</td>
-      <td><b>${esc(e.name || '(unnamed)')}</b><br><span class="note">${TYPES[e.type]}</span>${s.sameWork ? `<span class="flagline" title="Different models or occurrences may be different work">Same work? ${esc(s.sameWork.text)}. Consider splitting.</span>` : ''}${reasonBox}</td>
-      <td><div class="chips">${chips}</div></td>
-      <td class="n">${s.n}</td>
-      <td class="n">${fmtU(s.mean, U().dp + 1)}</td>
-      <td class="n">${s.cv == null ? '—' : fmt(s.cv, 0) + '%'}</td>
-      <td class="n">${s.machine ? '<span class="note" title="Machine-paced: no rating">100</span>' : `<input type="number" min="1" step="any" data-f="rating" value="${e.rating ?? ''}" placeholder="${fmt(defRating(), 0)}" aria-label="Rating for process ${i}">`}</td>
-      <td class="n">${fmtU(s.normal, U().dp + 1)}</td>
-      <td class="n"><input type="number" min="0" step="any" data-f="allow" value="${e.allow ?? ''}" placeholder="${s.machine ? '0' : fmt(allowTotal(), 0)}" aria-label="Allowance for process ${i}"></td>
-      <td class="n"><b>${fmtU(s.std, U().dp + 1)}</b></td>
-      <td class="n">${fmt(e.every, e.every % 1 ? 1 : 0)}</td>
-      <td class="n"><b>${fmtU(s.perUnit, U().dp + 1)}</b></td>
-      <td class="n">${fmt(e.crew, e.crew % 1 ? 1 : 0)}</td>
-      <td class="n">${fmtU(s.labor, U().dp + 1)}</td>
-      <td>${statusTag(s)}</td></tr>`;
-  };
+    }).join('') || '<span class="note">none yet</span>'}</div></td>` },
+    { k: 'kept', h: 'Kept', n: 1, extra: 'Kept', c: (e, s) => `<td class="n">${s.n}</td>` },
+    { k: 'avg', h: `Average observed (${u})`, n: 1, c: (e, s) => `<td class="n">${fmtU(s.mean, dp)}</td>` },
+    { k: 'spread', h: 'Spread', n: 1, extra: 'Spread', c: (e, s) => `<td class="n">${s.cv == null ? '—' : fmt(s.cv, 0) + '%'}</td>` },
+    { k: 'rating', h: 'Rating %', n: 1, c: (e, s, i) => `<td class="n">${s.machine ? '<span class="note" title="Machine-paced: no rating">100</span>' : `<input type="number" min="1" step="any" data-f="rating" value="${e.rating ?? ''}" placeholder="${fmt(defRating(), 0)}" aria-label="Rating for process ${i}">`}</td>` },
+    { k: 'normal', h: `Normal time (${u})`, n: 1, c: (e, s) => `<td class="n">${fmtU(s.normal, dp)}</td>` },
+    { k: 'allow', h: 'Allowance %', n: 1, c: (e, s, i) => `<td class="n"><input type="number" min="0" step="any" data-f="allow" value="${e.allow ?? ''}" placeholder="${s.machine ? '0' : fmt(allowTotal(), 0)}" aria-label="Allowance for process ${i}"></td>` },
+    { k: 'std', h: `Standard per occurrence (${u})`, n: 1, c: (e, s) => `<td class="n"><b>${fmtU(s.std, dp)}</b></td>` },
+    { k: 'every', h: 'Every', n: 1, extra: 'Every', c: (e) => `<td class="n">${fmt(e.every, e.every % 1 ? 1 : 0)}</td>` },
+    { k: 'perUnit', h: `Weighted time per unit (${u})`, n: 1, extra: 'Time per unit', sub: (g) => g.t, c: (e, s) => `<td class="n">${fmtU(s.perUnit, dp)}</td>` },
+    { k: 'crew', h: 'Crew', n: 1, c: (e) => `<td class="n">${fmt(e.crew, e.crew % 1 ? 1 : 0)}</td>` },
+    { k: 'labor', h: `Weighted labor per unit (${u})`, n: 1, sub: (g) => g.labor, c: (e, s) => `<td class="n"><b>${fmtU(s.labor, dp)}</b></td>` },
+    { k: 'status', h: 'Status', extra: 'Status', c: (e, s) => `<td>${statusTag(s)}</td>` },
+    { k: 'notes', h: 'Notes', c: (e, s, i) => `<td><input type="text" class="pnote" data-f="note" value="${esc(e.note || '')}" placeholder="Note" aria-label="Note for process ${i}"></td>` },
+  ];
+  $('#colPick').innerHTML = COLS.filter((c) => c.extra).map((c) => `<button type="button" class="colbtn" data-col="${c.k}" aria-pressed="${RES_COLS.has(c.k)}">${RES_COLS.has(c.k) ? '✓ ' : '+ '}${esc(c.extra)}</button>`).join('');
+  const cols = COLS.filter((c) => !c.extra || RES_COLS.has(c.k));
+  const head = `<tr>${cols.map((c) => `<th${c.n ? ' class="n"' : ''}>${esc(c.h).replace(/ \(/, '<br>(')}</th>`).join('')}</tr>`;
+  const row = (e) => { const s = st.get(e.id), i = elNo(e.id); return `<tr data-el="${esc(e.id)}">${cols.map((c) => c.c(e, s, i)).join('')}</tr>`; };
+  // total rows: the label sits in the Process column, numbers under their own columns
+  const sumRow = (cls, label, g) => `<tr class="${cls}">${cols.map((c) => (c.k === 'name' ? `<td>${esc(label)}</td>` : c.sub ? `<td class="n">${fmtU(c.sub(g), dp)}</td>` : '<td></td>')).join('')}</tr>`;
   let body = '';
   const gs = gsW.filter((g) => F.station === '*' || g.name === F.station);
   for (const g of gs) {
-    body += `<tr class="grp"><td colspan="${all ? 15 : 8}">${esc(stLabel(g.name))}</td></tr>`;
+    body += `<tr class="grp"><td colspan="${cols.length}">${esc(stLabel(g.name))}</td></tr>`;
     body += g.els.map(row).join('');
-    body += all
-      ? `<tr class="sub"><td></td><td colspan="10">${esc(stLabel(g.name))} total (weighted)</td><td class="n">${fmtU(g.t, U().dp + 1)}</td><td></td><td class="n">${fmtU(g.labor, U().dp + 1)}</td><td></td></tr>`
-      : `<tr class="sub"><td></td><td colspan="5">${esc(stLabel(g.name))} total per unit</td><td class="n">${fmtU(g.t, U().dp + 1)}</td><td></td></tr>`;
+    body += sumRow('sub', `${stLabel(g.name)} total`, g);
   }
-  if (F.station === '*') body += all
-    ? `<tr class="total"><td></td><td colspan="10">Whole unit (weighted)</td><td class="n">${fmtU(tt.total, U().dp + 1)}</td><td></td><td class="n">${fmtU(tt.labor, U().dp + 1)}</td><td></td></tr>`
-    : `<tr class="total"><td></td><td colspan="5">Whole unit, per unit</td><td class="n">${fmtU(tt.total, U().dp + 1)}</td><td></td></tr>`;
+  if (F.station === '*') body += sumRow('total', 'Whole unit', { t: tt.total, labor: tt.labor });
   $('#resTable').innerHTML = `<thead>${head}</thead><tbody>${body}</tbody>`;
 }
 // Tap a time on the Standard times tab: change it, leave it out, or delete it
@@ -1722,6 +1719,7 @@ $('#resTable').addEventListener('change', (e) => {
   const inp = e.target.closest('input[data-f]'); if (!inp) return;
   const el = elById(inp.closest('tr').dataset.el); if (!el) return;
   if (inp.dataset.f === 'ratingNote') { el.ratingNote = inp.value.trim(); persist(); renderResults(); return; }
+  if (inp.dataset.f === 'note') { el.note = inp.value.trim(); persist(); return; }
   const v = numOrNull(inp.value);
   if (inp.dataset.f === 'rating') el.rating = v > 0 ? v : null;
   if (inp.dataset.f === 'allow') el.allow = v != null && v >= 0 ? v : null;
@@ -2101,10 +2099,10 @@ $('#sampleSel').addEventListener('change', (e) => {
 /* ---- Tables shared by the workbook and the single CSV files ---- */
 function rowsStd() {
   const st = allStats(), { total, labor } = totals(st), u = U().label;
-  const rows = [['#', 'Station', 'Process', 'Type', 'Observations kept', `Average observed (${u})`, `Std deviation (${u})`, 'CV %', 'Rating %', 'Rating reason', `Normal time (${u})`, 'Allowance %', `Standard per occurrence (${u})`, 'Once every N units', `Weighted per unit (${u})`, 'Crew', `Weighted labor per unit (${u})`, `Observations needed (${C().confidence}%, ±${C().accuracy}%)`, 'Status', 'Same work check']];
+  const rows = [['#', 'Station', 'Process', 'Type', 'Observations kept', `Average observed (${u})`, `Std deviation (${u})`, 'CV %', 'Rating %', 'Rating reason', `Normal time (${u})`, 'Allowance %', `Standard per occurrence (${u})`, 'Once every N units', `Weighted per unit (${u})`, 'Crew', `Weighted labor per unit (${u})`, `Observations needed (${C().confidence}%, ±${C().accuracy}%)`, 'Status', 'Same work check', 'Notes']];
   S.elements.forEach((e, i) => {
     const s = st.get(e.id), rr = ratingReason(e);
-    rows.push([i + 1, e.station, e.name, TYPES[e.type], s.n, rd(s.mean), rd(s.sd), s.cv == null ? '' : +s.cv.toFixed(1), s.rating, s.machine ? 'Machine-paced' : rr.own ? rr.text : rr.text ? `Default: ${rr.text}` : '', rd(s.normal), s.allow, rd(s.std), e.every, rd(s.perUnit), e.crew, rd(s.labor), s.need ?? '', statusText(s), s.sameWork ? `${s.sameWork.text}. Consider splitting.` : '']);
+    rows.push([i + 1, e.station, e.name, TYPES[e.type], s.n, rd(s.mean), rd(s.sd), s.cv == null ? '' : +s.cv.toFixed(1), s.rating, s.machine ? 'Machine-paced' : rr.own ? rr.text : rr.text ? `Default: ${rr.text}` : '', rd(s.normal), s.allow, rd(s.std), e.every, rd(s.perUnit), e.crew, rd(s.labor), s.need ?? '', statusText(s), s.sameWork ? `${s.sameWork.text}. Consider splitting.` : '', e.note || '']);
   });
   rows.push([], ['', '', 'Total per unit (weighted)', '', '', '', '', '', '', '', '', '', '', '', rd(total), '', rd(labor)]);
   const tk = takt(); if (tk) rows.push(['', '', 'Takt time', '', '', '', '', '', '', '', '', '', '', '', rd(tk)]);
@@ -2132,8 +2130,8 @@ function rowsModels() {
   return rows;
 }
 function rowsObs() {
-  const rows = [['Station', 'Process', 'Type', 'Crew', 'Every', 'Comes after', 'Own rating %', 'Rating reason', 'Own allowance %', ...S.models.map((m) => `Qty ${m.name}`), ...S.cycles.map((c, i) => `${obsLabel(c, i)} [${modelName(c.model)}]`)]];
-  for (const e of S.elements) rows.push([e.station, e.name, TYPES[e.type], e.crew, e.every, afterText(e), e.rating ?? '', e.rating != null ? e.ratingNote || '' : '', e.allow ?? '', ...S.models.map((m) => qtyOf(e, m.id)), ...S.cycles.map((c) => {
+  const rows = [['Station', 'Process', 'Type', 'Crew', 'Every', 'Comes after', 'Own rating %', 'Rating reason', 'Own allowance %', 'Notes', ...S.models.map((m) => `Qty ${m.name}`), ...S.cycles.map((c, i) => `${obsLabel(c, i)} [${modelName(c.model)}]`)]];
+  for (const e of S.elements) rows.push([e.station, e.name, TYPES[e.type], e.crew, e.every, afterText(e), e.rating ?? '', e.rating != null ? e.ratingNote || '' : '', e.allow ?? '', e.note || '', ...S.models.map((m) => qtyOf(e, m.id)), ...S.cycles.map((c) => {
     const v = valsOf(c, e.id); if (!v.length) return '';
     return v.length === 1 && !offOf(c, e.id).length ? rd(v[0]) : cellText(c, e.id, (x) => String(rd(x)));
   })]);
