@@ -192,6 +192,7 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
 .barrow .fill { height: 100%; background: var(--c-walk); }
 
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 6px; font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgba(0,0,0,.25); z-index: 10; }
+.toastbtn { margin-left: 10px; font: 700 14px var(--font); color: var(--paper); background: none; border: 1px solid currentColor; border-radius: 4px; padding: 3px 9px; cursor: pointer; }
 .print-head { display: none; }
 .askbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--warn-bg); border-top: 2px solid var(--warn);
   padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
@@ -958,7 +959,18 @@ function ask(msg, yesLabel, onYes) {
   };
 }
 let toastT = 0;
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3600); }
+// A short message at the bottom. action = { label, fn } adds a button, such as Undo.
+function toast(msg, action) {
+  const t = $('#toast');
+  t.textContent = msg; t.hidden = false;
+  if (action) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'toastbtn'; b.textContent = action.label;
+    b.onclick = () => { t.hidden = true; clearTimeout(toastT); action.fn(); };
+    t.append(' ', b);
+  }
+  clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, action ? 7000 : 3600);
+}
 function kpi(v, label, cls = '') { return `<div class="kpi ${cls}"><b>${esc(v)}</b><span>${esc(label)}</span></div>`; }
 
 /* ---------------- Setup ---------------- */
@@ -1201,14 +1213,20 @@ $('#procTable').addEventListener('click', (e) => {
   if (b.dataset.act === 'up' && i > 0) [S.elements[i - 1], S.elements[i]] = [S.elements[i], S.elements[i - 1]];
   if (b.dataset.act === 'down' && i < S.elements.length - 1) [S.elements[i + 1], S.elements[i]] = [S.elements[i], S.elements[i + 1]];
   if (b.dataset.act === 'del') {
-    const has = S.cycles.some((c) => c.t[el.id]);
-    const go = () => {
-      S.elements = S.elements.filter((x) => x !== el);
-      for (const x of S.elements) x.after = x.after.filter((id) => id !== el.id);
-      for (const c of S.cycles) { delete c.t[el.id]; delete c.x[el.id]; }
-      persist(); renderProc(); renderHeader();
-    };
-    if (has) ask(`Delete process ${i + 1} “${el.name}” and its times?`, 'Delete process', go); else go();
+    // Delete straight away; keep what's needed to undo it
+    const refs = S.elements.filter((x) => x.after.includes(el.id)).map((x) => x.id);
+    const times = S.cycles.filter((c) => c.t[el.id]).map((c) => ({ id: c.id, t: c.t[el.id], x: c.x[el.id] }));
+    S.elements = S.elements.filter((x) => x !== el);
+    for (const x of S.elements) x.after = x.after.filter((id) => id !== el.id);
+    for (const c of S.cycles) { delete c.t[el.id]; delete c.x[el.id]; }
+    persist(); renderProc(); renderHeader();
+    toast(`Deleted process ${i + 1}${el.name ? ` “${el.name}”` : ''}${times.length ? ' and its times' : ''}.`, { label: 'Undo', fn: () => {
+      if (T.on || elById(el.id)) return;
+      S.elements.splice(Math.min(i, S.elements.length), 0, el);
+      for (const x of S.elements) if (refs.includes(x.id) && !x.after.includes(el.id)) x.after.push(el.id);
+      for (const r of times) { const c = S.cycles.find((y) => y.id === r.id); if (c) { c.t[el.id] = r.t; if (r.x) c.x[el.id] = r.x; } }
+      persist(); renderProc(); renderHeader(); toast(`Process ${i + 1} is back.`);
+    } });
     return;
   }
   persist(); renderProc(); renderHeader();
