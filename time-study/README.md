@@ -37,6 +37,8 @@ All sample numbers are made up. Company data never goes in this repository.
 | Minimum operators | total labor per unit ÷ takt, rounded up |
 | Balance efficiency | total work ÷ (stations × slowest station) |
 
+**Rating reasons.** Any rating other than 100 needs a written reason: on Setup for the default rating (the Westinghouse calculator fills in the factors for you), or in the Rating reason column for a single process. The page warns until every non-100 rating has one, and the reasons go into the Excel workbook.
+
 The default allowances are personal 5%, fatigue 4%, delay 6% and other 0%. Replace them with your plant's rule. Machine-paced processes get no rating and no allowance unless you set them.
 
 ## Pasting from Excel

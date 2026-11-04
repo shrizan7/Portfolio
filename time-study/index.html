@@ -104,6 +104,9 @@ tr.grp td { background: var(--sub); font-weight: 650; padding-top: 8px; }
 .grid .tools { white-space: nowrap; }
 .grid .tools .btn { padding: 5px 7px; }
 .obsh { display: flex; gap: 2px; align-items: center; }
+.res td:nth-child(2) { min-width: 180px; }
+.res input.reason { width: 200px; text-align: left; font-family: var(--font); }
+.res input.need { border-color: var(--warn); background: var(--warn-bg); }
 .res input { width: 64px; padding: 5px 6px; font-size: 13px; text-align: right; }
 .chips { display: flex; flex-wrap: wrap; gap: 3px; max-width: 300px; }
 .chip { font: 12px var(--mono); padding: 3px 6px; border-radius: 4px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
@@ -254,6 +257,8 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
           <b>Performance rating</b>
           <label class="field"><span>Default rating % (100 = normal pace)</span><input type="number" min="1" step="any" data-k="constants.rating" data-num></label>
           <p class="note">Used for every process unless you type a different rating on the Standard times tab. Machine-paced processes are always 100.</p>
+          <label class="field"><span>Why this rating? (needed if it isn’t 100)</span><textarea data-k="constants.ratingNote" rows="2" placeholder="e.g. Trainee in week 3, working slower than normal pace"></textarea></label>
+          <p class="callout warn small" id="ratingWarn" hidden>The default rating isn’t 100. Write down why, so the number can be explained to an operator, supervisor or interviewer.</p>
           <details>
             <summary class="small">Work it out with the Westinghouse system</summary>
             <div class="form" id="whBox"></div>
@@ -469,7 +474,7 @@ function blank() {
     study: { name: '', cell: '', part: '', operator: '', observer: '', date: today(), notes: '' },
     baseline: { metric: '', before: null, after: null, unit: '', date: '', how: '', higherBetter: 'yes' },
     demand: { units: null, per: 'day', days: 5, shifts: 1, shiftMin: 480, breakMin: 50 },
-    constants: { unit: 'min', rating: 100, personal: 5, fatigue: 4, delay: 6, other: 0, confidence: '95', accuracy: 5, wh: { skill: 'D Average', effort: 'D Average', cond: 'D Average', cons: 'D Average' } },
+    constants: { unit: 'min', rating: 100, ratingNote: '', personal: 5, fatigue: 4, delay: 6, other: 0, confidence: '95', accuracy: 5, wh: { skill: 'D Average', effort: 'D Average', cond: 'D Average', cons: 'D Average' } },
     elements: [],
     cycles: [],
     balanceTarget: null,
@@ -491,6 +496,7 @@ function normalize(s) {
   const b = blank();
   const out = { ...b, ...s, version: 2 };
   for (const k of ['study', 'baseline', 'demand', 'constants']) out[k] = { ...b[k], ...(s[k] || {}) };
+  out.constants.ratingNote = String(out.constants.ratingNote || '');
   out.constants.wh = { ...b.constants.wh, ...((s.constants || {}).wh || {}) };
   if (!UNITS[out.constants.unit]) out.constants.unit = 'min';
   out.constants.confidence = String(out.constants.confidence);
@@ -506,7 +512,7 @@ function normalize(s) {
     return {
       id: String(e.id || newId('e')), station, name: String(e.name || ''), type: TYPES[e.type] ? e.type : 'manual',
       crew: +e.crew > 0 ? +e.crew : 1, every: +e.every > 0 ? +e.every : 1, after: Array.isArray(e.after) ? e.after.map(String) : [],
-      rating: numOrNull(e.rating), allow: numOrNull(e.allow),
+      rating: numOrNull(e.rating), ratingNote: String(e.ratingNote || ''), allow: numOrNull(e.allow),
     };
   });
   out.cycles = (Array.isArray(s.cycles) ? s.cycles : []).map((c, i) => ({
@@ -660,7 +666,19 @@ function whRating() {
   for (const [k, g] of Object.entries(WH)) { const o = g.opts.find((x) => x[0] === C().wh[k]); sum += o ? o[1] : 0; }
   return Math.round(100 * (1 + sum) * 10) / 10;
 }
+// The written reason behind a process's rating: its own, or the default rating's
+function ratingReason(e) {
+  if (e.type === 'machine') return { text: 'Machine-paced', own: false, missing: false };
+  const own = e.rating != null, text = String((own ? e.ratingNote : C().ratingNote) || '').trim();
+  const rating = own ? e.rating : defRating();
+  return { text, own, missing: rating !== 100 && !text };
+}
+function whText() {
+  const parts = Object.entries(WH).map(([k, g]) => { const o = g.opts.find((x) => x[0] === C().wh[k]) || ['D Average', 0]; return `${g.label.toLowerCase()} ${o[0]} (${o[1] > 0 ? '+' : ''}${o[1].toFixed(2)})`; });
+  return `Westinghouse: ${parts.join(', ')} = ${fmt(whRating())}%.`;
+}
 function renderDerived() {
+  $('#ratingWarn').hidden = !(defRating() !== 100 && !String(C().ratingNote || '').trim());
   const t = takt(), a = availSec();
   $('#taktOut').textContent = t
     ? `Takt time: ${fmtT(t, 2)} per unit  (${fmt(a / 3600, 1)} h available per ${periodName()} ÷ ${fmt(+S.demand.units, 0)} units)`
@@ -688,7 +706,13 @@ function onSetupEdit(e) {
 }
 $('#tab-setup').addEventListener('input', onSetupEdit);
 $('#tab-setup').addEventListener('change', (e) => { if (e.target.tagName === 'SELECT') onSetupEdit(e); });
-$('#whUse').addEventListener('click', () => { C().rating = whRating(); persist(); renderSetup(); toast(`Default rating set to ${fmt(C().rating)}%.`); });
+$('#whUse').addEventListener('click', () => {
+  C().rating = whRating();
+  const note = String(C().ratingNote || '').trim();
+  if (!note || /^Westinghouse:/.test(note)) C().ratingNote = whText() + ' Reason: ';
+  persist(); renderSetup(); toast(`Default rating set to ${fmt(C().rating)}%. Add why after “Reason:”.`);
+  const ta = document.querySelector('[data-k="constants.ratingNote"]'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+});
 
 /* ---------------- Processes table ---------------- */
 function afterText(el) { return el.after.map(elNo).filter((n) => n > 0).sort((a, b) => a - b).join(', '); }
@@ -1019,9 +1043,12 @@ function renderResults() {
   if (b.before == null) { note.className = 'callout warn'; note.textContent = 'No “before” number recorded yet. Add it on the Setup tab so you can show the change later.'; }
   else { note.className = 'callout ok'; note.textContent = `Baseline: ${b.metric || 'value'} = ${fmt(b.before, 2)} ${b.unit || ''}${b.date ? ` (measured ${b.date})` : ''}${b.after != null ? `. After: ${fmt(b.after, 2)} ${b.unit || ''}.` : '.'}${single ? ` ${single} process${single > 1 ? 'es have' : ' has'} only one observation, so their spread is unknown.` : ''}`; }
 
+  const noReason = S.elements.filter((e) => ratingReason(e).missing).length;
+  if (noReason) { note.className = 'callout warn'; note.textContent += ` ${noReason} process${noReason > 1 ? 'es use' : ' uses'} a rating other than 100 with no written reason. Add it in the Rating reason column (or on Setup for the default rating).`; }
+
   if (!S.elements.length) { $('#resTable').innerHTML = '<tr><td class="note">No processes yet.</td></tr>'; return; }
   const u = U().label;
-  const head = `<tr><th>#</th><th>Process</th><th>Observations (${u})</th><th class="n">Kept</th><th class="n">Average</th><th class="n">Spread</th><th class="n">Rating %</th><th class="n">Normal</th><th class="n">Allow %</th><th class="n">Standard</th><th class="n">Every</th><th class="n">Per unit</th><th class="n">Crew</th><th class="n">Labor</th><th>Enough?</th></tr>`;
+  const head = `<tr><th>#</th><th>Process</th><th>Observations (${u})</th><th class="n">Kept</th><th class="n">Average</th><th class="n">Spread</th><th class="n">Rating %</th><th>Rating reason</th><th class="n">Normal</th><th class="n">Allow %</th><th class="n">Standard</th><th class="n">Every</th><th class="n">Per unit</th><th class="n">Crew</th><th class="n">Labor</th><th>Enough?</th></tr>`;
   const row = (e) => {
     const s = st.get(e.id), i = elNo(e.id);
     const chips = s.all.map((r) => {
@@ -1033,6 +1060,9 @@ function renderResults() {
     else if (s.n === 1) enough = '<span class="tag warn">Only 1</span>';
     else if (s.need > s.n) enough = `<span class="tag warn">Need ${s.need - s.n} more</span>`;
     else enough = '<span class="tag ok">Yes</span>';
+    const rr = ratingReason(e);
+    const reasonCell = s.machine ? '<span class="note">Machine-paced</span>'
+      : `<input type="text" class="reason${rr.missing ? ' need' : ''}" data-f="ratingNote" value="${esc(e.ratingNote || '')}" placeholder="${esc(!rr.own && rr.text ? `Default: ${rr.text}` : rr.missing ? 'Why not 100?' : 'Optional')}" title="${esc(rr.text || (rr.missing ? 'Rating isn’t 100: write down why' : ''))}" aria-label="Reason for the rating of process ${i}">`;
     return `<tr data-el="${esc(e.id)}">
       <td class="mono">${i}</td>
       <td><b>${esc(e.name || '(unnamed)')}</b><br><span class="note">${TYPES[e.type]}</span></td>
@@ -1041,6 +1071,7 @@ function renderResults() {
       <td class="n">${fmtU(s.mean, U().dp + 1)}</td>
       <td class="n">${s.cv == null ? '—' : fmt(s.cv, 0) + '%'}</td>
       <td class="n">${s.machine ? '<span class="note" title="Machine-paced: no rating">100</span>' : `<input type="number" min="1" step="any" data-f="rating" value="${e.rating ?? ''}" placeholder="${fmt(defRating(), 0)}" aria-label="Rating for process ${i}">`}</td>
+      <td>${reasonCell}</td>
       <td class="n">${fmtU(s.normal, U().dp + 1)}</td>
       <td class="n"><input type="number" min="0" step="any" data-f="allow" value="${e.allow ?? ''}" placeholder="${s.machine ? '0' : fmt(allowTotal(), 0)}" aria-label="Allowance for process ${i}"></td>
       <td class="n"><b>${fmtU(s.std, U().dp + 1)}</b></td>
@@ -1053,11 +1084,11 @@ function renderResults() {
   let body = '';
   const gs = groups(st).filter((g) => F.station === '*' || g.name === F.station);
   for (const g of gs) {
-    body += `<tr class="grp"><td colspan="15">${esc(stLabel(g.name))}</td></tr>`;
+    body += `<tr class="grp"><td colspan="16">${esc(stLabel(g.name))}</td></tr>`;
     body += g.els.map(row).join('');
-    body += `<tr class="sub"><td></td><td colspan="10">${esc(stLabel(g.name))} total</td><td class="n">${fmtU(g.t, U().dp + 1)}</td><td></td><td class="n">${fmtU(g.labor, U().dp + 1)}</td><td></td></tr>`;
+    body += `<tr class="sub"><td></td><td colspan="11">${esc(stLabel(g.name))} total</td><td class="n">${fmtU(g.t, U().dp + 1)}</td><td></td><td class="n">${fmtU(g.labor, U().dp + 1)}</td><td></td></tr>`;
   }
-  if (F.station === '*') body += `<tr class="total"><td></td><td colspan="10">Whole unit</td><td class="n">${fmtU(total, U().dp + 1)}</td><td></td><td class="n">${fmtU(labor, U().dp + 1)}</td><td></td></tr>`;
+  if (F.station === '*') body += `<tr class="total"><td></td><td colspan="11">Whole unit</td><td class="n">${fmtU(total, U().dp + 1)}</td><td></td><td class="n">${fmtU(labor, U().dp + 1)}</td><td></td></tr>`;
   $('#resTable').innerHTML = `<thead>${head}</thead><tbody>${body}</tbody>`;
 }
 $('#resTable').addEventListener('click', (e) => {
@@ -1069,6 +1100,7 @@ $('#resTable').addEventListener('click', (e) => {
 $('#resTable').addEventListener('change', (e) => {
   const inp = e.target.closest('input[data-f]'); if (!inp) return;
   const el = elById(inp.closest('tr').dataset.el); if (!el) return;
+  if (inp.dataset.f === 'ratingNote') { el.ratingNote = inp.value.trim(); persist(); renderResults(); return; }
   const v = numOrNull(inp.value);
   if (inp.dataset.f === 'rating') el.rating = v > 0 ? v : null;
   if (inp.dataset.f === 'allow') el.allow = v != null && v >= 0 ? v : null;
@@ -1251,13 +1283,13 @@ $('#sampleSel').addEventListener('change', (e) => {
 /* ---- Tables shared by the workbook and the single CSV files ---- */
 function rowsStd() {
   const st = allStats(), { total, labor } = totals(st), u = U().label;
-  const rows = [['#', 'Station', 'Process', 'Type', 'Observations kept', `Average observed (${u})`, `Std deviation (${u})`, 'CV %', 'Rating %', `Normal time (${u})`, 'Allowance %', `Standard time (${u})`, 'Once every N units', `Standard per unit (${u})`, 'Crew', `Labor per unit (${u})`, `Observations needed (${C().confidence}%, ±${C().accuracy}%)`]];
+  const rows = [['#', 'Station', 'Process', 'Type', 'Observations kept', `Average observed (${u})`, `Std deviation (${u})`, 'CV %', 'Rating %', 'Rating reason', `Normal time (${u})`, 'Allowance %', `Standard time (${u})`, 'Once every N units', `Standard per unit (${u})`, 'Crew', `Labor per unit (${u})`, `Observations needed (${C().confidence}%, ±${C().accuracy}%)`]];
   S.elements.forEach((e, i) => {
     const s = st.get(e.id);
-    rows.push([i + 1, e.station, e.name, TYPES[e.type], s.n, rd(s.mean), rd(s.sd), s.cv == null ? '' : +s.cv.toFixed(1), s.rating, rd(s.normal), s.allow, rd(s.std), e.every, rd(s.perUnit), e.crew, rd(s.labor), s.need ?? '']);
+    rows.push([i + 1, e.station, e.name, TYPES[e.type], s.n, rd(s.mean), rd(s.sd), s.cv == null ? '' : +s.cv.toFixed(1), s.rating, (() => { const rr = ratingReason(e); return s.machine ? 'Machine-paced' : rr.own ? rr.text : rr.text ? `Default: ${rr.text}` : ''; })(), rd(s.normal), s.allow, rd(s.std), e.every, rd(s.perUnit), e.crew, rd(s.labor), s.need ?? '']);
   });
-  rows.push([], ['', '', 'Total per unit', '', '', '', '', '', '', '', '', '', '', rd(total), '', rd(labor)]);
-  const tk = takt(); if (tk) rows.push(['', '', 'Takt time', '', '', '', '', '', '', '', '', '', '', rd(tk)]);
+  rows.push([], ['', '', 'Total per unit', '', '', '', '', '', '', '', '', '', '', '', rd(total), '', rd(labor)]);
+  const tk = takt(); if (tk) rows.push(['', '', 'Takt time', '', '', '', '', '', '', '', '', '', '', '', rd(tk)]);
   return rows;
 }
 function rowsObs() {
@@ -1289,7 +1321,7 @@ function rowsSummary() {
     ['Processes', S.elements.length], ['Processes not timed yet', missing], ['Units observed (columns)', S.cycles.length],
     [],
     ['Constants'],
-    ['Times in', U().name], ['Default rating %', defRating()],
+    ['Times in', U().name], ['Default rating %', defRating()], ['Why this default rating', C().ratingNote || (defRating() === 100 ? 'Normal pace' : 'NOT WRITTEN DOWN')],
     ['Personal allowance %', +c.personal || 0], ['Fatigue allowance %', +c.fatigue || 0], ['Delay allowance %', +c.delay || 0], ['Other allowance %', +c.other || 0], ['Total allowance %', allowTotal()],
     ['Confidence %', +c.confidence], ['Accuracy ± %', +c.accuracy || 0],
     [],
@@ -1456,6 +1488,7 @@ function sampleLong() {
     ['Fill & test', 'Vacuum fill', 'machine', 1, 72], ['Fill & test', 'Leak test', 'machine', 1, 36], ['Fill & test', 'Electrical tests', 'manual', 2, 45], ['Fill & test', 'Final inspection and touch-up', 'manual', 1, 24], ['Fill & test', 'Load out to shipping', 'walk', 2, 12],
   ];
   s.elements = defs.map(([station, name, type, crew], i) => ({ id: 'e' + (i + 1), station, name, type, crew, every: 1, after: i ? ['e' + i] : [], rating: null, allow: null }));
+  s.elements[1].rating = 110; s.elements[1].ratingNote = 'Most experienced welder on the line (12 years). Westinghouse B2 skill (+0.08), C2 effort (+0.02).';
   s.elements[16].after = ['e16']; s.elements[17].after = ['e16']; s.elements[18].after = ['e17', 'e18'];
   const r = rng(11), serials = ['Unit 2041', 'Unit 2042', 'Unit 2043'];
   serials.forEach((label, c) => {
@@ -1473,6 +1506,7 @@ function sampleLong() {
   s.cycles[0].t.e21 = 61 * 60;                           // unusual, left in so the page points it out
   return s;
 }
+const SHORT_REASONS = { 1: 'Steady, practised pace on a familiar cut length.', 2: 'Hesitated on each strip length; new stripping tool this week.', 6: 'Labels were pre-queued in the printer, so hands moved faster than normal.', 8: 'Paused to recount cables in the tote.' };
 function sampleShort() {
   const s = blank();
   s.study = { name: 'Sample: cable assembly', cell: 'Cable assembly', part: 'Battery cable, 4 AWG', operator: 'Operator A', observer: 'Sample', date: today(), notes: 'Made-up numbers to show how the tool works.' };
@@ -1485,7 +1519,7 @@ function sampleShort() {
     ['Print and apply labels', 'manual', 12, 1, [2], 110], ['Pull test', 'manual', 10, 1, [6], 100], ['Bundle and place in tote', 'manual', 8, 1, [7, 8], 95],
     ['Refill lugs and label roll', 'walk', 75, 25, [], 100],
   ];
-  s.elements = defs.map(([name, type, , every, after, rating], i) => ({ id: 'e' + (i + 1), station: i < 6 ? 'Cut & crimp' : 'Finish', name, type, crew: 1, every, after: after.map((n) => 'e' + n), rating: rating === 100 ? null : rating, allow: null }));
+  s.elements = defs.map(([name, type, , every, after, rating], i) => ({ id: 'e' + (i + 1), station: i < 6 ? 'Cut & crimp' : 'Finish', name, type, crew: 1, every, after: after.map((n) => 'e' + n), rating: rating === 100 ? null : rating, ratingNote: SHORT_REASONS[i] || '', allow: null }));
   const r = rng(7);
   for (let c = 0; c < 12; c++) {
     const cy = { id: 'c' + (c + 1), label: '', when: new Date(Date.now() - 3600e3 + c * 125e3).toISOString(), t: {}, x: {} };
