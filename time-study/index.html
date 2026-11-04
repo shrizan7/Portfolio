@@ -388,9 +388,13 @@ ol.how { margin: 0; padding-left: 20px; display: flex; flex-direction: column; g
     <div class="card">
       <div class="row between">
         <h2>Standard time per process</h2>
-        <label class="field noprint" style="width:200px"><span class="showSt">Show station</span><select id="rStation"></select></label>
+        <div class="row end noprint">
+          <label class="row small" style="padding-bottom:8px"><input type="checkbox" id="resAll"> Show all columns</label>
+          <label class="field" style="width:200px"><span class="showSt">Show station</span><select id="rStation"></select></label>
+        </div>
       </div>
-      <p class="note">Tap an observation to leave it out (or put it back). A small number after a time marks the 2nd or 3rd time on that unit. Orange times are more than 30% away from that process’s middle value. <b>Standard</b> is per occurrence (one panel, one weld). <b>Per unit</b> is the weighted average across the mix. <b>Preliminary</b> means it doesn’t have enough observations yet. All times are in <b class="unitName">minutes</b>.</p>
+      <p class="note" id="resNoteShort">Tap an observation to leave it out (or put it back). Orange times are more than 30% away from that process’s middle value. <b>Standard</b> = Average × Rating % × (1 + Allowance %), for doing the process once. If a process happens more or less than once per unit, the time per unit is shown under it. <b>Preliminary</b> means it doesn’t have enough observations yet. All times are in <b class="unitName">minutes</b>.</p>
+      <p class="note" id="resNoteLong" hidden>Tap an observation to leave it out (or put it back). A small number after a time marks the 2nd or 3rd time on that unit. Orange times are more than 30% away from that process’s middle value. <b>Standard</b> is per occurrence (one panel, one weld). <b>Per unit</b> is the weighted average across the mix. <b>Preliminary</b> means it doesn’t have enough observations yet. All times are in <b class="unitName">minutes</b>.</p>
       <div class="tall"><table class="res" id="resTable"></table></div>
     </div>
     <div class="card">
@@ -578,6 +582,8 @@ let S = load() || sampleLong(); // first visit opens on the made-up sample; “N
 let tab = 'setup';
 const F = { station: '*', q: '' };
 let BAL_VIEW = '';
+let RES_ALL = false;
+try { RES_ALL = localStorage.getItem(KEY + ':allcols') === '1'; } catch (e) { /* ignore */ }
 
 function load() {
   try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); return s && s.format === 'ie-time-study' ? normalize(s) : null; } catch (e) { return null; }
@@ -1105,6 +1111,7 @@ function renderProc() {
 }
 $('#fStation').addEventListener('change', (e) => { F.station = e.target.value; renderProc(); });
 $('#rStation').addEventListener('change', (e) => { F.station = e.target.value; renderResults(); });
+$('#resAll').addEventListener('change', (e) => { RES_ALL = e.target.checked; try { localStorage.setItem(KEY + ':allcols', RES_ALL ? '1' : '0'); } catch (err) { /* ignore */ } renderResults(); });
 $('#fSearch').addEventListener('input', (e) => { F.q = e.target.value; renderProc(); $('#fSearch').focus(); });
 $('#addProc').addEventListener('click', () => {
   if (T.on) return;
@@ -1520,7 +1527,10 @@ function renderResults() {
 
   if (!S.elements.length) { $('#resTable').innerHTML = '<tr><td class="note">No processes yet.</td></tr>'; return; }
   const u = U().label, short = (n) => (n.length > 8 ? n.slice(0, 7) + '…' : n);
-  const head = `<tr><th>#</th><th>Process</th><th>Observations (${u})</th><th class="n">Kept</th><th class="n">Average</th><th class="n">Spread</th><th class="n">Rating %</th><th class="n">Normal</th><th class="n">Allow %</th><th class="n">Standard<br>per occurrence</th><th class="n">Every</th><th class="n">Per unit<br>(weighted)</th><th class="n">Crew</th><th class="n">Labor</th><th>Status</th></tr>`;
+  const all = RES_ALL;
+  $('#resAll').checked = all; $('#resNoteShort').hidden = all; $('#resNoteLong').hidden = !all;
+  const headShort = `<tr><th>#</th><th>Process</th><th>Observations (${u})</th><th class="n">Average</th><th class="n">Rating %</th><th class="n">Allow %</th><th class="n">Standard</th><th>Status</th></tr>`;
+  const head = !all ? headShort : `<tr><th>#</th><th>Process</th><th>Observations (${u})</th><th class="n">Kept</th><th class="n">Average</th><th class="n">Spread</th><th class="n">Rating %</th><th class="n">Normal</th><th class="n">Allow %</th><th class="n">Standard<br>per occurrence</th><th class="n">Every</th><th class="n">Per unit<br>(weighted)</th><th class="n">Crew</th><th class="n">Labor</th><th>Status</th></tr>`;
   const row = (e) => {
     const s = st.get(e.id), i = elNo(e.id);
     const chips = s.all.map((r) => {
@@ -1531,6 +1541,22 @@ function renderResults() {
     const rr = ratingReason(e);
     // Only a process with its own rating gets a reason box, under its name
     const reasonBox = !s.machine && rr.own ? `<input type="text" class="reason${rr.missing ? ' need' : ''}" data-f="ratingNote" value="${esc(e.ratingNote || '')}" placeholder="${esc(rr.missing ? `Why ${fmt(e.rating, 0)}%? (needed)` : `Why ${fmt(e.rating, 0)}%?`)}" aria-label="Reason for the rating of process ${i}">` : '';
+    const ratingCell = `<td class="n">${s.machine ? '<span class="note" title="Machine-paced: no rating">100</span>' : `<input type="number" min="1" step="any" data-f="rating" value="${e.rating ?? ''}" placeholder="${fmt(defRating(), 0)}" aria-label="Rating for process ${i}">`}</td>`;
+    const allowCell = `<td class="n"><input type="number" min="0" step="any" data-f="allow" value="${e.allow ?? ''}" placeholder="${s.machine ? '0' : fmt(allowTotal(), 0)}" aria-label="Allowance for process ${i}"></td>`;
+    const nameCell = `<td><b>${esc(e.name || '(unnamed)')}</b><br><span class="note">${TYPES[e.type]}</span>${s.sameWork ? `<span class="flagline" title="Different models or occurrences may be different work">Same work? ${esc(s.sameWork.text)}. Consider splitting.</span>` : ''}${reasonBox}</td>`;
+    if (!all) {
+      // per unit differs from once (Qty or Every not 1): show it small under the standard
+      const differs = s.std != null && s.perUnit != null && Math.abs(s.perUnit - s.std) > Math.max(1e-9, s.std * 0.005);
+      return `<tr data-el="${esc(e.id)}">
+      <td class="mono">${i}</td>
+      ${nameCell}
+      <td><div class="chips">${chips}</div></td>
+      <td class="n">${fmtU(s.mean, U().dp + 1)}</td>
+      ${ratingCell}
+      ${allowCell}
+      <td class="n"><b>${fmtU(s.std, U().dp + 1)}</b>${differs ? `<br><span class="note" title="This process happens more or less than once per unit (Qty or Every), so it adds this much to an average unit">${fmtU(s.perUnit, U().dp + 1)} per unit</span>` : ''}</td>
+      <td>${statusTag(s)}</td></tr>`;
+    }
     return `<tr data-el="${esc(e.id)}">
       <td class="mono">${i}</td>
       <td><b>${esc(e.name || '(unnamed)')}</b><br><span class="note">${TYPES[e.type]}</span>${s.sameWork ? `<span class="flagline" title="Different models or occurrences may be different work">Same work? ${esc(s.sameWork.text)}. Consider splitting.</span>` : ''}${reasonBox}</td>
@@ -1551,11 +1577,15 @@ function renderResults() {
   let body = '';
   const gs = gsW.filter((g) => F.station === '*' || g.name === F.station);
   for (const g of gs) {
-    body += `<tr class="grp"><td colspan="15">${esc(stLabel(g.name))}</td></tr>`;
+    body += `<tr class="grp"><td colspan="${all ? 15 : 8}">${esc(stLabel(g.name))}</td></tr>`;
     body += g.els.map(row).join('');
-    body += `<tr class="sub"><td></td><td colspan="10">${esc(stLabel(g.name))} total (weighted)</td><td class="n">${fmtU(g.t, U().dp + 1)}</td><td></td><td class="n">${fmtU(g.labor, U().dp + 1)}</td><td></td></tr>`;
+    body += all
+      ? `<tr class="sub"><td></td><td colspan="10">${esc(stLabel(g.name))} total (weighted)</td><td class="n">${fmtU(g.t, U().dp + 1)}</td><td></td><td class="n">${fmtU(g.labor, U().dp + 1)}</td><td></td></tr>`
+      : `<tr class="sub"><td></td><td colspan="5">${esc(stLabel(g.name))} total per unit</td><td class="n">${fmtU(g.t, U().dp + 1)}</td><td></td></tr>`;
   }
-  if (F.station === '*') body += `<tr class="total"><td></td><td colspan="10">Whole unit (weighted)</td><td class="n">${fmtU(tt.total, U().dp + 1)}</td><td></td><td class="n">${fmtU(tt.labor, U().dp + 1)}</td><td></td></tr>`;
+  if (F.station === '*') body += all
+    ? `<tr class="total"><td></td><td colspan="10">Whole unit (weighted)</td><td class="n">${fmtU(tt.total, U().dp + 1)}</td><td></td><td class="n">${fmtU(tt.labor, U().dp + 1)}</td><td></td></tr>`
+    : `<tr class="total"><td></td><td colspan="5">Whole unit, per unit</td><td class="n">${fmtU(tt.total, U().dp + 1)}</td><td></td></tr>`;
   $('#resTable').innerHTML = `<thead>${head}</thead><tbody>${body}</tbody>`;
 }
 $('#resTable').addEventListener('click', (e) => {

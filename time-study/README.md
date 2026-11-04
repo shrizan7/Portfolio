@@ -28,7 +28,7 @@ All sample numbers and model names are made up. Company data never goes in this 
    - Paste hundreds of rows from Excel, filter by station, search, or use the stopwatch, which asks for a repeated process each time it happens.
 3. **Standard times:**
    - labor and time per unit for each model, plus the weighted average across the mix
-   - for each process: average → normal → standard per occurrence → weighted per unit → labor, grouped by station
+   - for each process, grouped by station: observations, average, rating %, allowance %, standard and status. If a process happens more or less than once per unit (Qty or Every), its time per unit is shown under the standard. Tick **Show all columns** for the full breakdown: kept, spread, normal, every, weighted per unit, crew and labor.
    - **Preliminary** until a process has enough observations
    - **Same work?** when two models, or the 1st and 2nd time on a unit, look like different work
    - rating reasons, with a warning for any rating other than 100 that has no reason
